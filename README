@@ -1,3 +1,37 @@
 Some utils to work with HP 3478A calibration SRAM data dumps
 
 GPLv3, but seriously who is going to use this
+
+********* compiling
+you need a C compiler and getopt .
+run `make` , nuff said
+
+********* using / examples
+"-t" mode : just verify checksums
+```
+$ ./hp3478util  -b ../calsample1.bin -t
+**** ./hp3478util
+**** (c) 2018 fenugrec
+entry 0x00: OK
+entry 0x01: OK
+entry 0x02: OK
+entry 0x03: OK
+entry 0x04: OK
+entry 0x05: OK
+entry 0x06: OK
+entry 0x07: OK
+entry 0x08: OK
+entry 0x09: OK
+entry 0x0A: OK
+entry 0x0B: OK
+entry 0x0C: OK
+entry 0x0D: OK
+entry 0x0E: OK
+entry 0x0F: OK
+entry 0x10: OK
+entry 0x11: OK
+```
+
+"-p" mode : take a GPIB dump and remove the "0x40" bits from the upper nibbles
+` ./hp3478util  -b ../calsample1.bin -p cal_cleaned.bin`
+
