@@ -27,8 +27,8 @@
 #define	CAL_DATASIZE	0x0B	//11 nibs
 #define CAL_ENTRIES	0x12		//18 entries of 13 bytes
 
-//ret 0 if ok
-static int loadfile(FILE *i_file, u8 *dest) {
+/** ret 0 if ok. format : 256 raw bytes */
+static int read_bin(FILE *i_file, u8 *dest) {
 	rewind(i_file);
 
 	/* load whole ROM */
@@ -40,18 +40,53 @@ static int loadfile(FILE *i_file, u8 *dest) {
 	return 0;
 }
 
-static void test_ck(FILE *i_file) {
-	u8	caldata[CALSIZE];
-	int recindex;
 
-	if (loadfile(i_file, caldata)) {
-		return;
+/** parse ASCII into a 256-byte array of nibbles
+ * ret 0 if ok.
+ *
+ * Expected format : one ascii char per expected nibble within [0x40-0x4F]
+ * Skips all other bytes.
+ */
+static int read_ascii(FILE *ifile, u8 *dest) {
+	u8 src[CALSIZE * 2];	//assumes max 50% of noise (CR/LF, whitespace etc)
+	unsigned cnt = 0;	//pos in dest[]
+	int tcur = 0;	//pos in src[]
+	int flen;
+
+	flen = fread(src,1,sizeof(src),ifile);
+	if (flen < CALSIZE) {
+		printf("not enough data, won't work\n");
+		return -1;
 	}
+
+	while (	(cnt < CALSIZE) &&
+			(tcur < flen)) {
+		u8 inp = src[tcur++];
+
+		if ((inp < 0x40) || (inp > 0x4F)) {
+			continue;
+		}
+		dest[cnt] = (u8) inp & 0x0F;
+		cnt += 1;
+	}
+
+	if (cnt != CALSIZE) {
+		printf("couldn't identify 256 nibbles !\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/** just checksums for every entry */
+static void test_ck(const u8 *caldata) {
+	int recindex;
 
 	for (recindex = 0; recindex < CAL_ENTRIES; recindex += 1) {
 		//parse every 13-byte entry.
 		u8 sum = 0;
-		u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
+		const u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
 		int idx;
 		for (idx = 0; idx < CAL_DATASIZE; idx += 1) {
 			u8 nib = entrydata[idx] & 0x0F;
@@ -72,13 +107,8 @@ static void test_ck(FILE *i_file) {
 /** convert dumped data (with extra "0x40" bits) to raw data;
  * still keeps 1 nibble-per-byte format
 */
-static void process(FILE *i_file, FILE *o_file) {
-	u8	caldata[CALSIZE];
+static void process(u8 *caldata, FILE *o_file) {
 	int idx;
-
-	if (loadfile(i_file, caldata)) {
-		return;
-	}
 
 	for (idx = 0; idx < CALSIZE; idx += 1) {
 		caldata[idx] &= 0x0F;	//clear higher nib
@@ -91,17 +121,12 @@ static void process(FILE *i_file, FILE *o_file) {
 }
 
 /** print out raw data for every cal entry */
-static void dump_entries(FILE *i_file) {
-	u8	caldata[CALSIZE];
+static void dump_entries(const u8 *caldata) {
 	int recindex;
-
-	if (loadfile(i_file, caldata)) {
-		return;
-	}
 
 	for (recindex = 0; recindex < CAL_ENTRIES; recindex += 1) {
 		//parse every 13-byte entry.
-		u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
+		const u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
 		int idx;
 		
 		printf("entry %02X: ", recindex);
@@ -121,7 +146,10 @@ static struct option long_options[] = {
 static void usage(void)
 {
 	fprintf(stderr, "usage:\n"
+		"***** file input : specify one\n"
+		"--ascfile\t-a <filename>\tASCII CAL dump\n"
 		"--binfile\t-b <filename>\tbinary CAL dump (one byte per nibble)\n"
+		"***** action : specify one\n"
 		"\t-t  \ttest checksums of every record\n"
 		"\t-p <outfile> \tcreate dump with processed bytes (clear 4 higher bits)\n"
 		"\t-d  \tdump raw data for every record\n"
@@ -137,11 +165,12 @@ int main(int argc, char * argv[]) {
 	int optidx;
 	FILE *file = NULL;
 	FILE *ofile = NULL;
+	u8	caldata[CALSIZE];
 
 	printf(	"**** %s\n"
 		"**** (c) 2018 fenugrec\n", argv[0]);
 
-	while((c = getopt_long(argc, argv, "dtb:p:h",
+	while((c = getopt_long(argc, argv, "dta:b:p:h",
 			       long_options, &optidx)) != -1) {
 		switch(c) {
 		case 'h':
@@ -161,14 +190,31 @@ int main(int argc, char * argv[]) {
 			}
 			action = TEST;
 			break;
-		case 'b':
+		case 'a':
 			if (file) {
-				fprintf(stderr, "-b given twice");
+				fprintf(stderr, "input file given twice");
 				goto bad_exit;
 			}
 			file = fopen(optarg, "rb");
 			if (!file) {
 				fprintf(stderr, "fopen() failed: %s\n", strerror(errno));
+				goto bad_exit;
+			}
+			if (read_ascii(file, caldata)) {
+				goto bad_exit;
+			}
+			break;
+		case 'b':
+			if (file) {
+				fprintf(stderr, "input file given twice");
+				goto bad_exit;
+			}
+			file = fopen(optarg, "rb");
+			if (!file) {
+				fprintf(stderr, "fopen() failed: %s\n", strerror(errno));
+				goto bad_exit;
+			}
+			if (read_bin(file, caldata)) {
 				goto bad_exit;
 			}
 			break;
@@ -203,13 +249,13 @@ int main(int argc, char * argv[]) {
 
 	switch (action) {
 	case DUMP:
-		dump_entries(file);
+		dump_entries(caldata);
 		break;
 	case TEST:
-		test_ck(file);
+		test_ck(caldata);
 		break;
 	case PROCESS:
-		process(file, ofile);
+		process(caldata, ofile);
 	default:
 		break;
 	}
