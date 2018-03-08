@@ -69,6 +69,9 @@ static void test_ck(FILE *i_file) {
 }
 
 
+/** convert dumped data (with extra "0x40" bits) to raw data;
+ * still keeps 1 nibble-per-byte format
+*/
 static void process(FILE *i_file, FILE *o_file) {
 	u8	caldata[CALSIZE];
 	int idx;
@@ -87,6 +90,27 @@ static void process(FILE *i_file, FILE *o_file) {
 	return;
 }
 
+/** print out raw data for every cal entry */
+static void dump_entries(FILE *i_file) {
+	u8	caldata[CALSIZE];
+	int recindex;
+
+	if (loadfile(i_file, caldata)) {
+		return;
+	}
+
+	for (recindex = 0; recindex < CAL_ENTRIES; recindex += 1) {
+		//parse every 13-byte entry.
+		u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
+		int idx;
+		
+		printf("entry %02X: ", recindex);
+		for (idx = 0; idx < CAL_DATASIZE; idx += 1) {
+			printf("%01X ", (unsigned) entrydata[idx] & 0x0F);
+		}
+		printf("\n");
+	}
+}
 
 static struct option long_options[] = {
 //	{ "debug", no_argument, 0, 'd' },
@@ -100,6 +124,7 @@ static void usage(void)
 		"--binfile\t-b <filename>\tbinary CAL dump (one byte per nibble)\n"
 		"\t-t  \ttest checksums of every record\n"
 		"\t-p <outfile> \tcreate dump with processed bytes (clear 4 higher bits)\n"
+		"\t-d  \tdump raw data for every record\n"
 		"");
 }
 
@@ -107,7 +132,7 @@ static void usage(void)
 int main(int argc, char * argv[]) {
 	char c;
 
-	enum {NIL, TEST, PROCESS} action = NIL;
+	enum {NIL, TEST, PROCESS, DUMP} action = NIL;
 
 	int optidx;
 	FILE *file = NULL;
@@ -116,12 +141,19 @@ int main(int argc, char * argv[]) {
 	printf(	"**** %s\n"
 		"**** (c) 2018 fenugrec\n", argv[0]);
 
-	while((c = getopt_long(argc, argv, "tb:p:h",
+	while((c = getopt_long(argc, argv, "dtb:p:h",
 			       long_options, &optidx)) != -1) {
 		switch(c) {
 		case 'h':
 			usage();
 			return 0;
+		case 'd':
+			if (action != NIL) {
+				printf("extra / bad arg : %s\n", optarg);
+				goto bad_exit;
+			}
+			action = DUMP;
+			break;
 		case 't':
 			if (action != NIL) {
 				printf("extra / bad arg : %s\n", optarg);
@@ -170,13 +202,16 @@ int main(int argc, char * argv[]) {
 	}
 
 	switch (action) {
-		case TEST:
-			test_ck(file);
-			break;
-		case PROCESS:
-			process(file, ofile);
-		default:
-			break;
+	case DUMP:
+		dump_entries(file);
+		break;
+	case TEST:
+		test_ck(file);
+		break;
+	case PROCESS:
+		process(file, ofile);
+	default:
+		break;
 	}
 
 	fclose(file);
