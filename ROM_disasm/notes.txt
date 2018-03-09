@@ -1,0 +1,19 @@
+This is my WIP annotated disassembly of ROM dump "03478-65501_dc118" available from ko4bb.
+
+A few notes:
+
+CPU : 8039 (MCS-48 family, compatible with 8048)
+GPIB controller : 8291
+
+pins :
+P21 : !CS for GPIB
+P22 : !CS to read DIP switch
+P23 = !CE for cal SRAM
+P26 : address bit12 ! (to run code > 0x1000)
+P27 : data out thru isol
+T1 : data in thru isol (read with jt1 / jnt1 opcodes)
+
+Identified code :
+-some BCD arithmetic
+-GPIB code : around 0x1200-0x1400. I haven't worked out the state machine and detailed command parsing.
+-CAL data writes + checksums
