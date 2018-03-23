@@ -8,8 +8,9 @@
  *
  * limited functionality. see usage (run without args)
  *
- * input format :
- * -b : binary, one byte per nibble, as dumped from GPIB, with or without "0x40" prefix.
+ * input formats :
+ * -a : ASCII, as dumped from GPIB but will skip newlines and whitespace
+ * -b : one byte per nibble, as dumped from GPIB, with or without "0x40" prefix.
  *
  */
 
