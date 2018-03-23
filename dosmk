@@ -1,0 +1,42 @@
+# to compile a DOS binary with native MS C6 compiler nmake
+#
+# To use : "nmake /f nmakfil"
+#
+# Notes:
+# DOS sucks. 8.3 sucks.
+#
+# CL flags:
+# /Fc  .COD source+asm listing
+# /Fs .LST source listing (prints compiler warnings inline)
+#
+# LINK flag:
+# /nod : don't link against default, for some reason it wants SLIBCE (emulated fpu)
+#
+
+mainsrc=hp3478
+
+cc=cl
+link=link
+cflags=/c /Idos /D__MSDOS__ /Fc
+
+
+$(mainsrc).exe: $(mainsrc).obj dos\getopt.obj dosmk
+	$(link) /nod \
+	$(mainsrc).obj getopt.obj dos\MCIB.LIB,\
+	$(mainsrc).exe,$(mainsrc).map,slibc7;
+
+hp3478.c: hp3478~1.c
+	copy hp3478~1.c hp3478.c
+
+#dos\getopt.obj: dos\getopt.c
+
+.c.obj:
+	$(cc) $(cdebug) $(cflags) $(cvars) $*.c
+
+#hp3478.obj: hp3478.c
+
+
+#can't do this
+#clean:
+#	del *.obj
+#	del tfdos.exe

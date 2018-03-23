@@ -1,0 +1,22 @@
+Extra files required to build a DOS .exe.
+Only reason for this is to run ISA-GPIB hardware on old iron.
+
+**GPIB driver
+DECL.H, MCIB.LIB: from NI 2.7.2 driver for DOS; they provide a .LIB file in Microsof C format.
+
+**getopt
+easy to compile.
+source used:
+https://www.flashrom.org/File:Libgetopt.tar.gz
+
+
+**djgpp :
+There's apparently no way to convert MCIB.LIB to a format understood by djgpp-gcc,
+partly due to memory model issues
+
+** MSC
+-compiling the whole thing with MS C (recommend >= 6)
+-solves the NI driver lib issue.
+-MSC6 nmake sucks
+-lots of tweaks needed for 8.3 filenames and other garbage
+-MSC looks for its own "SLIBCE.LIB" ? wtf. Give it slibc7.lib
