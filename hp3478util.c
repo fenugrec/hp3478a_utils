@@ -1,6 +1,6 @@
 /*
  * (c) fenugrec 2018
- * 
+ *
  * GPLv3
  *
  * simple tool to work with cal data dumps from hp3478a units.
@@ -23,10 +23,47 @@
 
 #include "stypes.h"
 
+#ifndef WITH_GPIB
+#define WITH_GPIB	1	//optional; set to 0 to compile without NI driver
+#endif
+
 #define CALSIZE 256				//256 nibs total.
 #define	CAL_ENTRYSIZE	0x0D	//includes 2-nib checksum
 #define	CAL_DATASIZE	0x0B	//11 nibs
 #define CAL_ENTRIES	0x12		//18 entries of 13 bytes
+
+
+#if (WITH_GPIB == 1)
+
+#ifdef __MSDOS__
+	#include "DECL.H"
+	typedef unsigned char bool;
+#else
+	#error GPIB DOS-only for now
+#endif
+
+
+#define DEFAULT_GPIBADDR 23
+/* some code here from tekfwtool */
+int  Dev;
+const char *ErrorMnemonic[] = {"EDVR", "ECIC", "ENOL", "EADR", "EARG",
+			       "ESAC", "EABO", "ENEB", "EDMA", "",
+			       "EOIP", "ECAP", "EFSO", "", "EBUS",
+			       "ESTB", "ESRQ", "", "", "", "ETAB"};
+static void GPIBCleanup(int Dev, char* ErrorMsg) {
+	printf("Error : %s\nibsta = 0x%x iberr = %d (%s)\n",
+	       ErrorMsg, ibsta, iberr, ErrorMnemonic[iberr]);
+	if (Dev != -1) {
+		printf("Cleanup: Taking device offline\n");
+		ibonl (Dev, 0);
+	}
+	return;
+}
+
+#endif
+
+
+
 
 /** ret 0 if ok. format : 256 raw bytes */
 static int read_bin(FILE *i_file, u8 *dest) {
@@ -95,7 +132,7 @@ static void test_ck(const u8 *caldata) {
 		}
 		sum += (entrydata[CAL_DATASIZE] << 4);	//hi nib of cks byte
 		sum += entrydata[CAL_DATASIZE + 1] & 0x0F;	//lo nib of cks byte
-		
+
 		if (sum != 0xFF) {
 			printf("entry 0x%02X: bad cks (0x%02X)\n", recindex, sum);
 		} else {
@@ -129,7 +166,7 @@ static void dump_entries(const u8 *caldata) {
 		//parse every 13-byte entry.
 		const u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
 		int idx;
-		
+
 		printf("entry %02X: ", recindex);
 		for (idx = 0; idx < CAL_DATASIZE; idx += 1) {
 			printf("%01X ", (unsigned) entrydata[idx] & 0x0F);
@@ -138,22 +175,79 @@ static void dump_entries(const u8 *caldata) {
 	}
 }
 
+/** connect over GPIB and dump CAL SRAM contents */
+static void get_caldata(FILE *ofile) {
+#if (WITH_GPIB != 1)
+	(void) ofile;
+	return;
+#else
+	unsigned idx;
+	uint8_t buf[CALSIZE];
+	uint8_t cmd[3];
+
+	Dev = ibdev(0, DEFAULT_GPIBADDR, 0, T100s, 1, 0);
+	if (ibsta & ERR) {
+		printf("Unable to open device\nibsta = 0x%x iberr = %d\n",
+		       ibsta, iberr);
+		return;
+	}
+
+	ibclr(Dev);
+	if (ibsta & ERR) {
+		GPIBCleanup(Dev, "Unable to clear device");
+		return;
+	}
+
+	cmd[0]='W';	//yes, W means Read. X is write !
+	cmd[2]='\n';
+	for (idx=0; idx < CALSIZE; idx++) {
+		cmd[1] = (uint8_t) idx;
+		ibwrt(Dev, cmd, 3);
+		if (ibsta & ERR) {
+			printf("wrt problem @ 0x%X\n", idx);
+			goto badexit;
+		}
+
+		ibrd(Dev, &buf[idx], 1);
+		if ((ibcntl != 1) || (ibsta & ERR)) {
+			printf("rd problem @ 0x%X\n", idx);
+			goto badexit;
+		}
+		//TODO maybe : validate that rx'd byte is [0x40..0x4F] ?
+	}
+	if (fwrite(buf, 1, CALSIZE, ofile) != CALSIZE) {
+		printf("problem with fwrite\n");
+	}
+	ibonl(Dev, 0);
+	return;
+
+badexit:
+	GPIBCleanup(Dev, "");
+	ibonl(Dev, 0);
+	return;
+#endif
+}
+
+
+
 static struct option long_options[] = {
 //	{ "debug", no_argument, 0, 'd' },
 	{ "help", no_argument, 0, 'h' },
 	{ NULL, 0, 0, 0 }
 };
 
-static void usage(void)
-{
+static void usage(void) {
 	fprintf(stderr, "usage:\n"
-		"***** file input : specify one\n"
+		"***** file input, if applicable\n"
 		"--ascfile\t-a <filename>\tASCII CAL dump\n"
 		"--binfile\t-b <filename>\tbinary CAL dump (one byte per nibble)\n"
 		"***** action : specify one\n"
 		"\t-t  \ttest checksums of every record\n"
 		"\t-p <outfile> \tcreate dump with processed bytes (clear 4 higher bits)\n"
 		"\t-d  \tdump raw data for every record\n"
+#if (WITH_GPIB == 1)
+		"\t-g <outfile> \tget CAL data from unit over GPIB\n"
+#endif
 		"");
 }
 
@@ -161,7 +255,10 @@ static void usage(void)
 int main(int argc, char * argv[]) {
 	char c;
 
-	enum {NIL, TEST, PROCESS, DUMP} action = NIL;
+	enum {NIL, TEST, PROCESS, DUMP, GGET} action = NIL;
+
+	bool need_ifile = 0;	//input file needed for some actions only
+	bool need_ofile = 0;
 
 	int optidx;
 	FILE *file = NULL;
@@ -171,7 +268,7 @@ int main(int argc, char * argv[]) {
 	printf(	"**** %s\n"
 		"**** (c) 2018 fenugrec\n", argv[0]);
 
-	while((c = getopt_long(argc, argv, "dta:b:p:h",
+	while((c = getopt_long(argc, argv, "dta:b:p:g:h",
 			       long_options, &optidx)) != -1) {
 		switch(c) {
 		case 'h':
@@ -182,6 +279,7 @@ int main(int argc, char * argv[]) {
 				printf("extra / bad arg : %s\n", optarg);
 				goto bad_exit;
 			}
+			need_ifile = 1;
 			action = DUMP;
 			break;
 		case 't':
@@ -189,6 +287,7 @@ int main(int argc, char * argv[]) {
 				printf("extra / bad arg : %s\n", optarg);
 				goto bad_exit;
 			}
+			need_ifile = 1;
 			action = TEST;
 			break;
 		case 'a':
@@ -229,15 +328,31 @@ int main(int argc, char * argv[]) {
 				fprintf(stderr, "fopen() failed: %s\n", strerror(errno));
 				goto bad_exit;
 			}
+			need_ifile = 1;
+			need_ofile = 1;
 			action = PROCESS;
+			break;
+		case 'g':
+			if (ofile) {
+				fprintf(stderr, "-g given twice");
+				goto bad_exit;
+			}
+			ofile = fopen(optarg, "wb");
+			if (!ofile) {
+				fprintf(stderr, "fopen() failed: %s\n", strerror(errno));
+				goto bad_exit;
+			}
+			need_ofile = 1;
+			action = GGET;
 			break;
 		default:
 			usage();
 			goto bad_exit;
 		}
 	}
-	if ((action == NIL) || !file ||
-		((action == PROCESS) && !ofile)) {
+	if ((action == NIL) ||
+		(need_ifile && !file) ||
+		(need_ofile && !ofile)) {
 		printf("some missing args.\n");
 		usage();
 		goto bad_exit;
@@ -257,18 +372,20 @@ int main(int argc, char * argv[]) {
 		break;
 	case PROCESS:
 		process(caldata, ofile);
+		break;
+	case GGET:
+		get_caldata(ofile);
+		break;
 	default:
 		break;
 	}
 
-	fclose(file);
+	if (file) fclose(file);
 	if (ofile) fclose(ofile);
 	return 0;
 
 bad_exit:
-	if (file) {
-		fclose(file);
-	}
+	if (file) fclose(file);
 	if (ofile) fclose(ofile);
 	return 1;
 }
