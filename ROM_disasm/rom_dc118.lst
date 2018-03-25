@@ -224,7 +224,9 @@ GPIB_trig:
 00F9 : B0 00		"  "		mov	@r0,#0x00
 00FB				L00FB:
 00FB : 93		" "		retr
-				;
+
+
+
 00FC				L00FC:
 00FC : FF		" "		mov	a,r7
 00FD : A3		" "		movp	a,@a
@@ -235,9 +237,10 @@ GPIB_trig:
 0102 : 7E		"~"		addc	a,r6
 0103 : AE		" "		mov	r6,a
 0104 : 44 FC		"D "		jmp	L02FC
-				;
+
+;generate a startbit on P27 ?
 0106				L0106:
-0106 : 9A 7F		"  "		anl	p2,#0x7F
+0106 : 9A 7F		"  "		anl	p2,#0x7F	;clr P27 : isol_out
 0108 : B9 12		"  "		mov	r1,#0x12
 010A				L010A:
 010A : E8 0A		"  "		djnz	r0,L010A
@@ -437,7 +440,10 @@ check_calentry:	;verify checksum of cks entry
 021D : 37		"7"		cpl	a
 021E				L021E:
 021E : 93		" "		retr
-				;
+
+
+
+;
 021F				L021F:
 021F : 85		" "		clr	f0
 0220 : B8 3E		" >"		mov	r0,#0x3E
@@ -587,6 +593,9 @@ dup 0xFF
 0302 : 7E		"~"		addc	a,r6
 0303 : AE		" "		mov	r6,a
 0304 : 84 FC		"  "		jmp	L04FC
+
+
+;0x306 - 0x387 : probably not code, but table data for use via movp3 opcode
 0306 : 20		" "		xch	a,@r0
 0307 : 03 01		"  "		add	a,#0x01
 0309 : 0C		" "		movd	a,p4
@@ -713,7 +722,7 @@ dup 0xFF
 0384 : 05		" "		en	i
 0385 : 12 0F		"  "		jb0	L030F
 0387 : 00		" "		nop
-0388 : FF		" "		mov	a,r7
+
 
 dup 0xFF
 
@@ -857,7 +866,9 @@ dup 0xFF
 04AA : 85		" "		clr	f0
 04AB : BB 65		" e"		mov	r3,#0x65
 04AD : A4 06		"  "		jmp	L0506
-				;
+
+
+; i: a=pRAM for tbl @ 0x300 ?
 04AF				L04AF:
 04AF : AF		" "		mov	r7,a
 04B0 : A3		" "		movp	a,@a
@@ -879,7 +890,7 @@ dup 0xFF
 04C9 : A0		" "		mov	@r0,a
 04CA				L04CA:
 04CA : F5		" "		sel	mb1
-04CB : B4 C5		"  "		call	L05C5
+04CB : B4 C5		"  "		call	L0DC5
 04CD : E5		" "		sel	mb0
 04CE				L04CE:
 04CE : 1F		" "		inc	r7
@@ -912,7 +923,7 @@ dup 0xFF
 
 
 dup 0xFF
-04FB : FF		" "		mov	a,r7
+
 04FC				L04FC:
 04FC : FF		" "		mov	a,r7
 04FD : A3		" "		movp	a,@a
@@ -1558,8 +1569,8 @@ dup 0xFF
 0944 : B0 93		"  "		mov	@r0,#0x93
 0946				L0946:
 0946 : BA 2D		" -"		mov	r2,#0x2D
-0948 : B4 C5		"  "		call	L05C5
-094A : 44 BE		"D "		jmp	L02BE
+0948 : B4 C5		"  "		call	L0DC5
+094A : 44 BE		"D "		jmp	L0ABE
 				;
 094C				L094C:
 094C : F6 57		" W"		jc	L0957
@@ -1714,12 +1725,12 @@ sub0A00
 
 L0AC4:
 0AC4 : BA 13		"  "		mov	r2,#0x13
-0AC6 : B4 C5		"  "		call	L05C5
+0AC6 : B4 C5		"  "		call	L0DC5
 0AC8 : 44 D4		"D "		jmp	L02D4
 				;
 0ACA				L0ACA:
 0ACA : BA 7B		" {"		mov	r2,#0x7B
-0ACC : B4 C5		"  "		call	L05C5
+0ACC : B4 C5		"  "		call	L0DC5
 0ACE : BF 20		"  "		mov	r7,#0x20
 0AD0 : E5		" "		sel	mb0
 0AD1 : 94 00		"  "		call	L0400
@@ -2118,23 +2129,28 @@ sub0D97
 0DC0 : EA BB		"  "		djnz	r2,L0DBB
 0DC2 : EB A2		"  "		djnz	r3,L0DA2
 0DC4 : 93		" "		retr
-				;
+
+
+L0DC5:	;i: r2=&src in 0x300 (PC & 0xFF).
+			;copy to RAM[0x44+idx] until src[idx]==0 ?
 0DC5 : B9 37		" 7"		mov	r1,#0x37
 0DC7 : B1 00		"  "		mov	@r1,#0x00
 0DC9 : B9 44		" D"		mov	r1,#0x44
+				L0DCB:
 0DCB : FA		" "		mov	a,r2
-0DCC : E3		" "		movp3	a,@a
+0DCC : E3		" "		movp3	a,@a	;@(0x0300 | a)
 0DCD : C6 D4		"  "		jz	L0DD4
 0DCF : A1		" "		mov	@r1,a
 0DD0 : 19		" "		inc	r1
 0DD1 : 1A		" "		inc	r2
-0DD2 : A4 CB		"  "		jmp	L05CB
+0DD2 : A4 CB		"  "		jmp	L0DCB
 0DD4				L0DD4:
 0DD4 : 93		" "		retr
-				;
+
+
 0DD5				L0DD5:
 0DD5 : BA 47		" G"		mov	r2,#0x47
-0DD7 : 44 CC		"D "		jmp	L02CC
+0DD7 : 44 CC		"D "		jmp	L0ACC
 
 dup 0xff
 
@@ -2368,21 +2384,21 @@ dup 0xFF
 1030 : 89 FF		"  "		orl	p1,#0xFF
 1032 : 99 00		"  "		anl	p1,#0x00
 1034 : F5		" "		sel	mb1
-1035 : 54 83		"T "		call	L0283	;0A83 ?)
+1035 : 54 83		"T "		call	L0283	;1A83 ?)
 1037 : E5		" "		sel	mb0
 1038 : B8 7F		"  "		mov	r0,#0x7F
 103A : 27		"'"		clr	a
-103B				L103B:
+103B				L103B:	;clear iRAM
 103B : A0		" "		mov	@r0,a
 103C : E8 3B		" ;"		djnz	r0,L103B
 103E : B8 7F		"  "		mov	r0,#0x7F
-1040				L1040:
+1040				L1040:	;write 0xFF to iRAM
 1040 : F0		" "		mov	a,@r0
 1041 : 96 9D		"  "		jnz	L109D
 1043 : B0 FF		"  "		mov	@r0,#0xFF
 1045 : E8 40		" @"		djnz	r0,L1040
 1047 : B8 7F		"  "		mov	r0,#0x7F
-1049				L1049:
+1049				L1049:	;test iRAM[idx]==0xFF
 1049 : F0		" "		mov	a,@r0
 104A : 37		"7"		cpl	a
 104B : 96 9D		"  "		jnz	L109D
@@ -2393,7 +2409,7 @@ dup 0xFF
 1054 : 62		"b"		mov	t,a
 1055 : 55		"U"		strt	t
 1056 : 25		"%"		en	tcnti
-1057 : D4 9E		"  "		call	L069E
+1057 : D4 9E		"  "		call	L169E
 1059 : C6 5F		" _"		jz	L105F
 105B : BA C3		"  "		mov	r2,#0xC3
 105D : 14 A9		"  "		call	L00A9
@@ -2536,6 +2552,8 @@ L10CB:	;GPIB_SPstatus
 10F9 : FF		" "		mov	a,r7
 10FA : FF		" "		mov	a,r7
 10FB : FF		" "		mov	a,r7
+
+L10FC:
 10FC : FF		" "		mov	a,r7
 10FD : A3		" "		movp	a,@a
 10FE : 7E		"~"		addc	a,r6
@@ -3665,13 +3683,14 @@ L164A:
 169B : E7		" "		rl	a
 169C : A1		" "		mov	@r1,a
 169D : 93		" "		retr
-				;
+
+sub_169E:
 169E : BE 00		"  "		mov	r6,#0x00
 16A0 : 97		" "		clr	c
 16A1 : BF 00		"  "		mov	r7,#0x00
 16A3				L16A3:
-16A3 : 14 FC		"  "		call	L00FC
-16A5 : D4 E4		"  "		call	L06E4
+16A3 : 14 FC		"  "		call	L10FC
+16A5 : D4 E4		"  "		call	L16E4
 16A7 : EF A3		"  "		djnz	r7,L16A3
 16A9 : 93		" "		retr
 				;
@@ -3726,6 +3745,7 @@ clr_ram26_b6_0:		;
 16E2 : 83		" "		ret
 				;
 16E3 : 00		" "		nop
+;flip to A12=0 => 06E6
 16E4 : 9A BF		"  "		anl	p2,#0xBF
 16E6 : 00		" "		nop
 16E7 : 83		" "		ret
@@ -3759,7 +3779,7 @@ clr_ram26_b6_0:		;
 1703 : 7E		"~"		addc	a,r6
 1704 : AE		" "		mov	r6,a
 1705 : F5		" "		sel	mb1
-1706 : 04 FC		"  "		jmp	L00FC
+1706 : 04 FC		"  "		jmp	L18FC
 				;
 1708 : B8 55		" U"		mov	r0,#0x55
 170A : F0		" "		mov	a,@r0
