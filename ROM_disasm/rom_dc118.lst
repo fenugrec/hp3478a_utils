@@ -1293,10 +1293,12 @@ dup 0xFF
 06E6 : 00		" "		nop
 06E7				L06E7:
 06E7 : 04 FC		"  "		jmp	L00FC
-				;
+
+;flip to A12=1 @ 16eb
 06E9				L06E9:
 06E9 : 8A 40		" @"		orl	p2,#0x40
 06EB : 00		" "		nop
+
 06EC : D4 87		"  "		call	L0687
 06EE : 8A 40		" @"		orl	p2,#0x40
 06F0 : 00		" "		nop
@@ -1312,8 +1314,8 @@ dup 0xFF
 				;
 06FA : FF		" "		mov	a,r7
 06FB : FF		" "		mov	a,r7
-06FC				L06FC:
 06FC : FF		" "		mov	a,r7
+
 06FD				L06FD:
 06FD : FF		" "		mov	a,r7
 06FE : A3		" "		movp	a,@a
@@ -1325,7 +1327,7 @@ dup 0xFF
 0704 : AE		" "		mov	r6,a
 0705 : F5		" "		sel	mb1
 0706				L0706:
-0706 : 04 FC		"  "		jmp	L00FC
+0706 : 04 FC		"  "		jmp	L08FC
 				;
 0708				L0708:
 0708 : FF		" "		mov	a,r7
@@ -1977,7 +1979,7 @@ dup 0xFF
 0D01 : A3		" "		movp	a,@a
 0D02 : 7E		"~"		addc	a,r6
 0D03 : AE		" "		mov	r6,a
-0D04 : C4 FC		"  "		jmp	L06FC
+0D04 : C4 FC		"  "		jmp	L0EFC
 				;
 0D06 : BF 4B		" K"		mov	r7,#0x4B
 0D08 : BE 05		"  "		mov	r6,#0x05
@@ -2224,7 +2226,7 @@ getaddr(idcal): ; getaddr(idcal) avec tableread
 
 
 dup 0xFF
-0EFB : FF		" "		mov	a,r7
+
 0EFC : FF		" "		mov	a,r7
 0EFD : A3		" "		movp	a,@a
 0EFE : 7E		"~"		addc	a,r6
@@ -2409,12 +2411,12 @@ dup 0xFF
 1054 : 62		"b"		mov	t,a
 1055 : 55		"U"		strt	t
 1056 : 25		"%"		en	tcnti
-1057 : D4 9E		"  "		call	L169E
+1057 : D4 9E		"  "		call	romck_prepare
 1059 : C6 5F		" _"		jz	L105F
 105B : BA C3		"  "		mov	r2,#0xC3
 105D : 14 A9		"  "		call	L00A9
 105F				L105F:
-105F : D4 E9		"  "		call	L06E9
+105F : D4 E9		"  "		call	L16E9
 1061 : FD		" "		mov	a,r5
 1062 : C6 66		" f"		jz	L1066
 1064 : 14 AA		"  "		call	L00AA
@@ -3684,7 +3686,7 @@ L164A:
 169C : A1		" "		mov	@r1,a
 169D : 93		" "		retr
 
-sub_169E:
+romck_prepare:
 169E : BE 00		"  "		mov	r6,#0x00
 16A0 : 97		" "		clr	c
 16A1 : BF 00		"  "		mov	r7,#0x00
@@ -4567,7 +4569,7 @@ dup 0xFF
 1D01 : A3		" "		movp	a,@a
 1D02 : 7E		"~"		addc	a,r6
 1D03 : AE		" "		mov	r6,a
-1D04 : C4 FC		"  "		jmp	L06FC
+1D04 : C4 FC		"  "		jmp	L0EFC
 				;
 1D06 : F2 1B		"  "		jb7	L1D1B
 1D08 : FE		" "		mov	a,r6
@@ -4690,7 +4692,7 @@ dup 0xFF
 1F02 : 7E		"~"		addc	a,r6
 1F03 : AE		" "		mov	r6,a
 1F04 : E5		" "		sel	mb0
-1F05 : 83		" "		ret
+1F05 : 83		" "		ret	;ret to 16a5 !
 				;
 1F06 : FB		" "		mov	a,r3
 1F07 : A8		" "		mov	r0,a
@@ -4910,6 +4912,7 @@ L1F8E
 1FFD : FF		" "		mov	a,r7
 1FFE : FF		" "		mov	a,r7
 				;
+;possibly dummy byte to bring checksum == 0 (see romck_prepare)
 1FFF : BC		" "		db	0xBC
 
 ;--------------------------------------------------------------

@@ -1,6 +1,17 @@
 This is my WIP annotated disassembly of ROM dump "03478-65501_dc118" available from ko4bb.
 
-A few notes:
+
+rom_dc118.lst was produced by dasmx and hand-annotated. This works ok but I got tired of doing fixups manually.
+dc118.ctl is the more complete resource, and is meant to be used with d48.
+Note, I have modified d48 to deal with >0x1000 addresses better. see d48_4k.patch
+My workflow was thus :
+1- generate listing with d48
+2- analyze, take notes
+3- add directives to the .ctl file to identify functions, etc
+4- repeat
+
+
+More notes:
 
 CPU : 8039 (MCS-48 family, compatible with 8048)
 GPIB controller : 8291
@@ -15,5 +26,8 @@ T1 : data in thru isol (read with jt1 / jnt1 opcodes)
 
 Identified code :
 -some BCD arithmetic
+-display code
 -GPIB code : around 0x1200-0x1400. I haven't worked out the state machine and detailed command parsing.
 -CAL data writes + checksums
+-keypad scan code
+-isolated data transmission to ADC control

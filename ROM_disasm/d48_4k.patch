@@ -1,0 +1,83 @@
+From f4c8bca8dac37554764e248fd4d73075a0b89a48 Mon Sep 17 00:00:00 2001
+From: fenugrec <fenugrec@users.sourceforge.net>
+Date: Sun, 25 Mar 2018 20:10:41 -0400
+Subject: [PATCH] d48 : handle > 4096-byte dumps better
+
+The MCS-48 architecture can manage a 12-bit address space, but some
+applications use external memory bank switching to implement >4kB ROMs.
+With this, d48 now creates references within the current 4kB "chunk".
+Accesses accross 4kB boundaries are beyond the scope of d48 but this
+patch improves the disassembly quality significantly.
+---
+ d48pass.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/d48pass.c b/d48pass.c
+index c1ee36e..a1c7339 100644
+--- a/d48pass.c
++++ b/d48pass.c
+@@ -88,14 +88,14 @@ void pass1(void)
+ 
+ 			if (j == OPT_PAGE)			// if memory reference in current page
+ 			{
+-				pc = i & 0xf00;						// get current page
++				pc = i & 0xff00;						// get current page
+ 				pc = pc | (pgmmem[i + 1] & 0xff);	// add address from opcode
+ 				pgmflags[pc] = (pgmflags[pc] & ~mask) | PF_REF;	// flag reference
+ 			}
+ 
+ 			if (j == OPT_EXT)				/* if extended memory reference */
+ 			{
+-				pc = (k & 0xe0) << 3;				// extract page number
++				pc = ((k & 0xe0) << 3) | (i & 0xF000) ;				// extract page number
+ 				pc = pc | (pgmmem[i + 1] & 0xff);	// add address from opcode
+ 
+ 				if (mbank)
+@@ -105,7 +105,7 @@ void pass1(void)
+ 					pgmflags[pc] = (pgmflags[pc] & ~mask) | PF_REF;
+ 
+ 				if (!flag41)
+-					mbank = (i < 2048) ? 0 : 1;
++					mbank = (i & 0x800) ? 1 : 0;
+ 			}
+ 
+ 			i = i + bctbl[k];				// update location pointer
+@@ -113,7 +113,7 @@ void pass1(void)
+ 		else									// not executable code
+ 			i++;
+ 
+-		if ((!flag41) && (i == 2048))
++		if ((!flag41) && ((i & 0xFFF) == 0x800))
+ 			mbank = 1;						// passing into upper bank
+ 	}
+ 
+@@ -571,7 +571,8 @@ void pass2(void)
+ 			}
+ 			else if ((j & 0xe) == OPT_EXT)		// if extended address
+ 			{
+-				q = ((k & 0xe0) << 3) | (pgmmem[i + 1] & 0xff);
++				q = ((k & 0xe0) << 3) | (i & 0xF000);	//extract upper bits
++				q |= (pgmmem[i + 1] & 0xff);
+ 
+ 				if (!flag41 && mbank)
+ 					q |= 0x800;
+@@ -589,7 +590,7 @@ void pass2(void)
+ 					kcnt += fprintf(fp, "%s", cptr);
+ 
+ 				if (!flag41)
+-					mbank = (i < 2048) ? 0 : 1;
++					mbank = (i & 0x800) ? 1 : 0;
+ 
+ 				splitcheck(i + 1);
+ 			}
+@@ -638,7 +639,7 @@ void pass2(void)
+ 			i += bctbl[k];					// update location counter
+ 		}
+ 
+-		if ((!flag41) && (i == 2048))
++		if ((!flag41) && ((i & 0xFFF) == 0x800))
+ 			mbank = 1;						// passing into upper bank
+ 	}
+ 
+-- 
+2.14.1
