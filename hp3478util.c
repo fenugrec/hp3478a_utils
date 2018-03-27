@@ -19,6 +19,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef __MSDOS__
+	typedef unsigned char bool;
+#else
+	#include <stdbool.h>
+#endif
+
 #include <getopt.h>
 
 #include "stypes.h"
@@ -37,7 +43,6 @@
 
 #ifdef __MSDOS__
 	#include "DECL.H"
-	typedef unsigned char bool;
 #else
 	#error GPIB DOS-only for now
 #endif
