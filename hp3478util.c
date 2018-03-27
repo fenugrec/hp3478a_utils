@@ -38,6 +38,8 @@
 #define	CAL_DATASIZE	0x0B	//11 nibs
 #define CAL_ENTRIES	0x13		//19 entries of 13 bytes.
 
+static const int rec_unused[] = {0x05, 0x10, 0x12, -1};	//these entries are always (?) unused and *may* have a bad checksum ?
+
 
 #if (WITH_GPIB == 1)
 
@@ -83,6 +85,15 @@ static int read_bin(FILE *i_file, u8 *dest) {
 	return 0;
 }
 
+
+/** return true if given index is valid (not unused) */
+static bool is_validentry(int recindex) {
+	int idx;
+	for (idx = 0; rec_unused[idx] != -1; idx++) {
+		if (rec_unused[idx] == recindex) return 0;
+	}
+	return 1;
+}
 
 /** parse ASCII into a 256-byte array of nibbles
  * ret 0 if ok.
@@ -139,7 +150,12 @@ static void test_ck(const u8 *caldata) {
 		sum += entrydata[CAL_DATASIZE + 1] & 0x0F;	//lo nib of cks byte
 
 		if (sum != 0xFF) {
-			printf("entry 0x%02X: bad cks (0x%02X)\n", recindex, sum);
+			printf("entry 0x%02X: bad cks (0x%02X)", recindex, sum);
+			if (!is_validentry(recindex)) {
+				printf(" (unused entry)\n");
+			} else {
+				printf("\n");
+			}
 		} else {
 			printf("entry 0x%02X: OK\n", recindex);
 		}
