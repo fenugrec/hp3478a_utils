@@ -10,19 +10,26 @@
 ; - easier to 'diff' when marking areas as data
 ;
 ; Cons:
-; Adding disassembly comments is more tedious; edits to the
-; output of course are clobbered on the next re-generation.
+; Commenting disassembly through this file is more tedious; edits to the
+; generated output are of course clobbered on the next re-generation.
 ;
 ; command : d48 -d -n -b <filename>
 ; (-n gives 0x.. constants instead of ..h)
 
 
-
+;********* command prefixes:
 ;L label
 ;C code
 ;S symbol
 ;! inline comment
-;
+;B data byte (or array)
+;M force mb0/mb1 bank
+
+;****** general stuff
+
+# 0
+# 0 Do not edit this .d48 file, as changes will be lost when re-running d48 !
+# 0
 
 L 0   reset
 L 3   intvec
@@ -30,6 +37,11 @@ L 7   tcvec
 C 0
 C 3
 C 7
+
+# 1000
+# 1000 This 0x1000-0x1FFF area is only accessible when address bit 12 (A12,
+# 1000 software-controlled by pin P26) is high.
+# 1000
 
 L 1000   alt_reset
 L 1003   alt_intvec
@@ -44,6 +56,7 @@ L 0200 check_calentry
 ! 0200 i: a=calid. verify checksum of entry
 l 0204 check_calentr_a
 ! 0204 verify checksum at a=addr
+l 0400 GPIB_SPstuff
 ! 043b reassemble 6 nibs from CALRAM
 ! 0506 (movx = from CALRAM)
 l 055c isol_synctx?
@@ -58,7 +71,7 @@ L 0d82 readcal_daa
 
 L 0E00 getaddr
 ! 0e00 getaddr(idcal) with tableread
-l 0e0d ret_movp
+l 0e0d ret_getaddr
 L 0f09 clr_0f09
 ! 0f09 clear (r2) bytes @ r0
 L 0f0f cal_cpy5
@@ -145,7 +158,6 @@ l 1afc romck_1afc
 l 1cfc romck_1cfc
 l 1efc romck_1efc
 ! 1f05 ret to 16a5
-! 1fff probable dummy byte to bring checksum == 0 (see romck_prepare)
 
 ;****** short return xrefs
 ; just clarifies disasm so a distant "jcc <x>" is obviously a jump-to-exit
@@ -174,20 +186,48 @@ L 1949 retr_1949
 ;************* locs with low confidence
 l 0106 isol_dly
 ! 0106 approx 10-15ms ? rough calc
-L 0313 cmd_0313?	; goes with sub 0DC5
-L 032D cmd_032D?	;
-L 037B cmd_037B?
 
 L 0Dc5 sub_0dc5
 ! 0dc5 i: r2=&src in 0x300 (PC & 0xFF). copy to RAM[0x44+idx] until src[idx]==0 ?
 
 L 0f28 cal58_sub2C
 ! 0f28 cal58 -= cal2C ? not sure
-l 11af sub_11af
+l 1185 jmpt1169_85
+l 118a jmpt1169_8a
+l 1197 jmpt1169_97
+l 11a1 jmpt1169_a1
+l 11a5 jmpt1169_a5
+l 11af jmpt1169_af
 ! 11af called with mb0
-l 11cd sub_11cd
-l 11d6 sub_11d6
+l 11bf jmpt1169_bf
+l 11c4 jmpt1169_c4
+l 11c9 jmpt1169_c9
+l 11cd jmpt1169_cd
+l 11d6 jmpt1169_d6
+l 11e3 jmpt1169_e3
+l 11e7 jmpt1169_e7
+l 11ef jmpt1169_ef
 l 1339 GPIB_sendreading?
+
+
+l 1419 jmpt1407_19
+l 1447 jmpt1407_47
+l 144b jmpt1407_4b
+l 14b4 jmpt1407_b4
+l 146f jmpt1407_6f
+l 147f jmpt1407_7f
+l 14a6 jmpt1407_a6
+l 14b2 jmpt1407_b2
+l 14b6 jmpt1407_b6
+l 14b8 jmpt1407_b8
+l 14bb jmpt1407_bb
+l 14cf jmpt1407_cf
+l 14d7 jmpt1407_d7
+l 14e7 jmpt1407_e7
+l 1484 jmpt1407_84
+l 147b jmpt1407_7b
+l 146d jmpt1407_6d
+l 147d jmpt1407_7d
 
 l 15bb sub_15bb
 ! 17d8 j if not changed; else clr f0
@@ -209,6 +249,9 @@ l 1a4c _cal_toggle0
 ! 00C4 GPIB_release
 ! 0106 clr P27 : isol_out
 ! 0201 idcal = stored @ RAM0[3F]
+! 0402 GPIB_CS
+! 040F SPSTATUS
+! 0411 SPMODE
 ! 0451 cal2C[] += cal36[] ?
 ! 063C set P27 (isol_dout)
 ! 0644 clr P27 (isol_dout)
@@ -237,14 +280,14 @@ l 1a4c _cal_toggle0
 ! 103B clear iRAM
 ! 1040 write 0xFF to iRAM
 ! 1049 test iRAM[idx]==0xFF
-! L10C GPIB_SPstatus
 ! 10DA SPSTATUS
 ! 10DC SPMODE = a
+! 114e tbl read @ 1300[]
 ! 1168 INFO: indirect jump
 ! 118C GPIB_CS for RTLstuff
 ! 1192 AUXMODE = 0D setRTL
 ! 1195 AUXMODE = 05 clrRTL
-! L11A calld with mb0
+! 11a0 calld with mb0
 ! 1205 get ADR0 ?
 ! 1206 check INT bit
 ! 120A if (ADR0.INT == 1)
@@ -330,17 +373,52 @@ l 1a4c _cal_toggle0
 ;************* data / ignore sections
 l 0174 tbl_0174
 b 0174-01a6
-l 0306 tbl_0306
+l 0306 cmd_0306[0
+L 0313 cmd_0313[1	; goes with sub 0DC5
+l 0320 cmd_0320[2
+L 032D cmd_032D[3
+l 033a cmd_033a[4
+l 0347 cmd_0347[5
+l 0354 cmd_0354[6
+l 0361 cmd_0361[7
+l 036e cmd_036e[8
+L 037B cmd_037B[9
+
 B 0306-0387
+
+l 04db tbl_spstatus?
+b 04db-04e3
+
 b 0e0f-0e40
 i 0f70-0fff
+
+l 1098 tbl_datainit?
+! 1098 looks like datainit[0 + 2i] = ramaddr, datainit[1 + 2i] = initial value
+b 1098-109c
+
+l 10c1 tbl_flaginit?
 b 10c1-10ca
+
+l 1169 jmptable_1169
+b 1169-1184
 
 l 1306 tbl_1306
 b 1306-132e
 
+l 13e6 tbl_13e6
+! 13e6 see movp with 0xe6
+b 13e6-13f1
+
+l 13f2 ascii_99999
+! 13f2 see movp with 0xf2
+b 13f2-13fa
+
+l 1407 jmptable_1407
+! 1407 looks like GPIB actions
+b 1407-1418
+
 l 173a tbl_173a[0]
-! sizeof elems=0x0D and sometimes 8; 0-terminated, see 1725
+! 173a sizeof elems=0x0D and sometimes 8; 0-terminated, see 1725
 l 1747 tbl_173a[1]
 l 1754 tbl_173a[2]
 l 1761 tbl_173a[3]
@@ -353,7 +431,29 @@ l 17ab tbl_173a[9
 l 17b8 tbl_173a[0a
 b 173a-17c4
 
+l 1b33 tbl_1b33
+b 1b33-1b3a
 
+l 1f61 tbl_1f61
+b 1f61-1f75
+l 1f76 tbl_1f76
+b 1f76-1f8d
+
+l 1ff3 tbl_1ff3
+b 1ff3-1ffa
+
+! 1fff probable dummy byte to bring checksum == 0 (see romck_prepare)
+b 1fff
 ;************* forced bank selection
 ;i.e. force sel mb0 / mb1
+m 1 135e
+m 1 1365
+m 1 136c
+m 1 1373
+m 1 1375
+m 1 1377
+m 1 137f
+m 1 1382
+m 1 1541
 m 0 1e13
+m 1 1f13
