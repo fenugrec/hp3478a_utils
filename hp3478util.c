@@ -36,7 +36,7 @@
 #define CALSIZE 256				//256 nibs total.
 #define	CAL_ENTRYSIZE	0x0D	//includes 2-nib checksum
 #define	CAL_DATASIZE	0x0B	//11 nibs
-#define CAL_ENTRIES	0x12		//18 entries of 13 bytes
+#define CAL_ENTRIES	0x13		//19 entries of 13 bytes.
 
 
 #if (WITH_GPIB == 1)
