@@ -40,6 +40,29 @@
 
 static const int rec_unused[] = {0x05, 0x10, 0x12, -1};	//these entries are always (?) unused and *may* have a bad checksum ?
 
+static const char *calentry_names[] = {
+	"30 mV DC",
+	"300 mV DC",
+	"3 V DC",
+	"30 V DC",
+	"300 V DC",
+	"(Not used)",
+	"ACV",
+	"30 Ohm 2W/4W",
+	"300 Ohm 2W/4W",
+	"3 KOhm 2W/4W",
+	"30 KOhm 2W/4W",
+	"300 KOhm 2W/4W",
+	"3 MOhm 2W/4W",
+	"30 MOhm 2W/4W",
+	"300 mA DC",
+	"3A DC",
+	"(Not used)",
+	"300 mA/3A AC",
+	"(Not used)",
+};
+
+
 
 #if (WITH_GPIB == 1)
 
@@ -150,14 +173,15 @@ static void test_ck(const u8 *caldata) {
 		sum += entrydata[CAL_DATASIZE + 1] & 0x0F;	//lo nib of cks byte
 
 		if (sum != 0xFF) {
-			printf("entry 0x%02X: bad cks (0x%02X)", recindex, sum);
+			printf("entry 0x%02X (%s): bad cks (0x%02X)",
+					recindex, calentry_names[recindex], sum);
 			if (!is_validentry(recindex)) {
 				printf(" (unused entry)\n");
 			} else {
 				printf("\n");
 			}
 		} else {
-			printf("entry 0x%02X: OK\n", recindex);
+			printf("entry 0x%02X: OK (%s)\n", recindex, calentry_names[recindex]);
 		}
 	}	//for
 }
@@ -192,7 +216,7 @@ static void dump_entries(const u8 *caldata) {
 		for (idx = 0; idx < CAL_DATASIZE; idx += 1) {
 			printf("%01X ", (unsigned) entrydata[idx] & 0x0F);
 		}
-		printf("\n");
+		printf("\t%s\n", calentry_names[recindex]);
 	}
 }
 
