@@ -37,6 +37,9 @@
 #define	CAL_ENTRYSIZE	0x0D	//includes 2-nib checksum
 #define	CAL_DATASIZE	0x0B	//11 nibs
 #define CAL_ENTRIES	0x13		//19 entries of 13 bytes.
+// structure of cal data :
+#define CAL_OFFSETSIZE	0x06	//6 first nibs : BCD offset value
+
 
 static const int rec_unused[] = {0x05, 0x10, 0x12, -1};	//these entries are always (?) unused and *may* have a bad checksum ?
 
@@ -207,14 +210,21 @@ static void process(u8 *caldata, FILE *o_file) {
 static void dump_entries(const u8 *caldata) {
 	int recindex;
 
+	//header columns
+	printf("entry #\toffset\tgain?\trange\n");
 	for (recindex = 0; recindex < CAL_ENTRIES; recindex += 1) {
 		//parse every 13-byte entry.
 		const u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
 		int idx;
 
-		printf("entry %02X: ", recindex);
-		for (idx = 0; idx < CAL_DATASIZE; idx += 1) {
-			printf("%01X ", (unsigned) entrydata[idx] & 0x0F);
+		printf("%02X\t", recindex);
+		for (idx = 0; idx < CAL_OFFSETSIZE; idx += 1) {
+			printf("%01X", (unsigned) entrydata[idx] & 0x0F);
+		}
+		printf("\t");
+		for (; idx < CAL_DATASIZE; idx += 1) {
+			//print remaining nibs
+			printf("%01X", (unsigned) entrydata[idx] & 0x0F);
 		}
 		printf("\t%s\n", calentry_names[recindex]);
 	}
