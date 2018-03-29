@@ -44,23 +44,23 @@
 static const int rec_unused[] = {0x05, 0x10, 0x12, -1};	//these entries are always (?) unused and *may* have a bad checksum ?
 
 static const char *calentry_names[] = {
-	"30 mV DC",
+	"30 mV DC",	//entry 0
 	"300 mV DC",
 	"3 V DC",
 	"30 V DC",
 	"300 V DC",
-	"(Not used)",
+	"(Not used)",	//entry 5
 	"ACV",
 	"30 Ohm 2W/4W",
-	"300 Ohm 2W/4W",
+	"300 Ohm 2W/4W",	//entry 8
 	"3 KOhm 2W/4W",
 	"30 KOhm 2W/4W",
 	"300 KOhm 2W/4W",
 	"3 MOhm 2W/4W",
 	"30 MOhm 2W/4W",
-	"300 mA DC",
+	"300 mA DC",	//entry 0x0E
 	"3A DC",
-	"(Not used)",
+	"(Not used)",	//entry 0x10
 	"300 mA/3A AC",
 	"(Not used)",
 };
