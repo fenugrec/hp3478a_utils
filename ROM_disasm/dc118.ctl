@@ -69,6 +69,13 @@ l 0506 readcal_r7_sign?
 ! 050d if (a > 8) ?
 l 054e readcal_bot_r6
 ! 067c test calRAM read/write ?
+l 0687 CAL_test
+l 16e9 bridge_CAL_test
+# 069f: 0xc5= UNCALIBRATED
+# 06b7: AD TEST FAIL
+# 06bb: AD LINK FAIL
+# 105d: UC ROM FAIL
+# 10a5: UC RAM FAIL
 # 0a3b update cal offset[6] + checksum
 # 0a68 read cal offset[6] to iRAM[2C], PBCD
 # 0aa5 update cal gain[5] + checksum
@@ -80,14 +87,16 @@ l 0ac4 print_CALFINISHD
 l 0aca print_CALINVZERO
 # 0af0 print_ENABLECAL
 l 0dd5 print_ACIVALERR
-
+l 1070 init_idata
+l 10aa syserr_a
+l 10a9 syserr_r2
 
 l 055c isol_synctx?
 l 0600 isol_syncrx?
 ! 0651 read keypad (useless?)
 ! 0659 get DIPswitch (useless?)
 l 0800 set_A12_ret
-! set A12; call 1807, then ret to orig (block0)
+! 0800 set A12; call 1807, then ret to orig (block0)
 l 0866 kp_call_a12
 l 086f keypad_checkloop1
 ! 086f: see also keypad loop @ 1118 !
@@ -148,6 +157,9 @@ l 114b key_LCL_or_SRQ
 l 1157 key_found
 ! 1157 when found, r0 = 0x20 + key_id
 
+
+l 15a8 func_change
+# 15a8 i: a = new mode (1 = DCV, 2=ACV, 2W,etc..)
 
 ;************* GPIB stuff
 L 00BA GPIB_trig
@@ -246,6 +258,7 @@ l 12f4 GPIB_ISR1_GET
 ! 13AB DOUT = data
 l 1400 GPIB_jmp1
 ! 1400 i : r0=&val (iRAM[24] always?)
+l 1454 jmp_rxbad
 ! 1491 SPSTATUS
 ! 14c7 SPSTATUS
 ! 14E1 GPIB_release
@@ -265,6 +278,7 @@ l 155c GPIB_init
 ! 159d ISR2
 ! 15a3 AUXMODE : release RFDhold
 ! 15ed AUXMODE : release RFDhold
+# 1607 print HPIB ADRS TO
 ! 1617 GPIB_CS for setaddr
 ! 161D if addr > 0x1f?
 ! 1621 ADRMODE = 1 (prim-prim)
@@ -297,14 +311,23 @@ L 1600 dip_parse
 ! 1611 get DIP setting
 ! 1650 read 50/60Hz switch
 l 16c0 clr_ram27_bit7
-l 1d15 ascii_getsign
-! 1d15 (a=val, r1=&dest++)
+l 18ad render_reading
+l 18dc pad display with spaces
+l 1d06 append_optsign_r6
+l 1d11 append_space
+l 1d15 append_sign_r1
+l 1d17 append_pos
+l 1d1b append_neg
+l 1d1f append_hsdigit
+l 1d23 append_lsdigit
+l 1d25 append_digit
+l 1d29 append_tail
 
 ;**** disp stuff
 L 0Dc5 print_calstr_r2
 ! 0dc5 i: r2=&src in page 0x300
 l 1602 print_GPIBaddr
-l 1708 disp_print1
+l 1708 disp_print1_r2
 ! 1708 print predefined strings from table, to disp buf
 l 1724 disp_print_r2
 l 17c5 disp_putc
@@ -402,7 +425,7 @@ l 1419 jmpt1407_19
 l 1447 jmpt1407_47
 l 144b jmpt1407_4b
 l 14b4 jmpt1407_b4
-l 146f jmpt1407_6f
+l 146f GPIBjmp_6f_Ffunc
 l 147f jmpt1407_7f
 l 14a6 jmpt1407_a6
 l 14b2 jmpt1407_b2
@@ -410,7 +433,7 @@ l 14b6 jmpt1407_b6
 l 14b8 jmpt1407_b8
 l 14bb jmpt1407_bb
 l 14cf jmpt1407_cf
-l 14d7 jmpt1407_d7
+l 14d7 GPIBjmp_d7_Xwrite
 # 14d7 write to CALRAM !!
 l 14e7 jmpt1407_e7
 l 1484 jmpt1407_84
@@ -491,11 +514,17 @@ b 04db-04e3
 b 0e0f-0e40
 i 0f70-0fff
 
-l 1098 tbl_datainit?
-! 1098 looks like datainit[0 + 2i] = ramaddr, datainit[1 + 2i] = initial value
+l 1098 tbl_datainit
+# 1098 does iRAM[datainit[0 + 2i]] = datainit[1 + 2i]
 b 1098-109c
 
-l 10c1 tbl_flaginit?
+l 10c1 tbl_flagerrors
+# 10c1 offs => flag,str
+# 10c1 c1: 02,47 UC RAM FAIL
+# 10c1 c3: 04,54 UC ROM FAIL
+# 10c1 c5: 01,6e UNCALIBRATED
+# 10c1 c7: 20,7b AD LINK FAIL
+# 10c1 c9: 10,88 AD TEST FAIL
 b 10c1-10ca
 
 # 1169 keycode jmp tables !
@@ -544,7 +573,7 @@ b 1407-1418
 
 # 173A string tables !
 # 173A bit flags : 0x80 = ?, 0x40 : decimal point !
-# 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
+# 1731 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
 # 0x40-0x5A ('A'-'Z') permitted too ? => show with decimal point !
 # 0x20 : space ( + 0)
 
@@ -573,11 +602,22 @@ l 17b8 str173A_b8
 b 173a-17c4
 
 l 1b33 tbl_1b33
-b 1b33-1b3a
+# 1b33 fits with func selection (1=DCV, 2=ACV, etc.)
+b 1b33-1b39
 
-l 1f61 tbl_1f61
+l 1f61 tbl_prefixes
+# 1f61 M/K/G etc. Some weirdness
+# 1f61 " \0MFMG E"
+# 1f61 " F GKEKF"
+# 1f61 "KGMEM"
 b 1f61-1f75
-l 1f76 tbl_1f76
+
+
+l 1f76 tbl_units
+# 1f76 unit suffixes
+# 1f76 FXFV DCVA
+# 1f76 COHM OHMA
+# 1f76 DCAA COHM
 b 1f76-1f8d
 
 l 1ff3 tbl_1ff3

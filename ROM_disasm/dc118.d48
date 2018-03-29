@@ -1,6 +1,6 @@
 ;
 ;  D48 V3.5.0 8048 Disassembly of dc118.bin
-;  2018/03/29 16:37
+;  2018/03/29 18:26
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -8,8 +8,7 @@
 ;
 	org	0x0
 ;
-reset:	nop			; 0000 - 00	.	; set A12; call 1807, then ret to orig (block0)
-; to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
+reset:	nop			; 0000 - 00	.
 	orl	p2,#0xff	; 0001 - 8a ff	..
 intvec:	nop			; 0003 - 00	.
 	jmp	X0643		; 0004 - c4 43	DC
@@ -881,7 +880,8 @@ X067c:	mov	a,r0		; 067c - f8	x	; test calRAM read/write ?
 	djnz	r0,X067c	; 0683 - e8 7c	h|
 	jmp	reset		; 0685 - 04 00	..
 ;
-X0687:	mov	r7,#0x32	; 0687 - bf 32	?2
+CAL_test:
+	mov	r7,#0x32	; 0687 - bf 32	?2
 	mov	r6,#0xf		; 0689 - be 0f	>.
 	orl	p2,#0xf		; 068b - 8a 0f	..
 	anl	p2,#0xf7	; 068d - 9a f7	.w	; calRAM_CE
@@ -896,6 +896,7 @@ X068f:	mov	a,r6		; 068f - fe	~
 	mov	r5,#0x0		; 069b - bd 00	=.
 	jmp	X06a1		; 069d - c4 a1	D!
 ;
+; : 0xc5= UNCALIBRATED
 X069f:	mov	r5,#0xc5	; 069f - bd c5	=E
 X06a1:	call	isol_synctx?	; 06a1 - b4 5c	4\
 	jf1	X06bb		; 06a3 - 76 bb	v;
@@ -911,9 +912,11 @@ X06a1:	call	isol_synctx?	; 06a1 - b4 5c	4\
 	jz	X06bd		; 06b3 - c6 bd	F=
 	mov	a,@r0		; 06b5 - f0	p
 	movp	a,@a		; 06b6 - a3	#
+; : AD TEST FAIL
 	mov	r4,#0xc9	; 06b7 - bc c9	<I
 	jmp	X06bd		; 06b9 - c4 bd	D=
 ;
+; : AD LINK FAIL
 X06bb:	mov	r3,#0xc7	; 06bb - bb c7	;G
 X06bd:	mov	r0,#0x2f	; 06bd - b8 2f	8/
 	mov	a,@r0		; 06bf - f0	p
@@ -940,7 +943,7 @@ romck_flipped0:
 ;
 X06e9:	orl	p2,#0x40	; 06e9 - 8a 40	.@
 	nop			; 06eb - 00	.
-	call	X0687		; 06ec - d4 87	T.
+	call	CAL_test	; 06ec - d4 87	T.
 	orl	p2,#0x40	; 06ee - 8a 40	.@
 	nop			; 06f0 - 00	.
 X06f1:	orl	p2,#0x40	; 06f1 - 8a 40	.@
@@ -967,7 +970,7 @@ romck_06fd:
 	org	0x800
 ;
 set_A12_ret:
-	orl	p2,#0x40	; 0800 - 8a 40	.@
+	orl	p2,#0x40	; 0800 - 8a 40	.@	; set A12; call 1807, then ret to orig (block0)
 	nop			; 0802 - 00	.
 	ret			; 0803 - 83	.
 ;
@@ -1956,18 +1959,20 @@ X1050:	orl	p2,#0x80	; 1050 - 8a 80	..
 	call	romck_prepare	; 1057 - d4 9e	T.
 	jz	X105f		; 1059 - c6 5f	F_
 	mov	r2,#0xc3	; 105b - ba c3	:C
-	call	X10a9		; 105d - 14 a9	.)
-X105f:	call	X16e9		; 105f - d4 e9	Ti
+; : UC ROM FAIL
+	call	syserr_r2	; 105d - 14 a9	.)
+X105f:	call	bridge_CAL_test	; 105f - d4 e9	Ti
 	mov	a,r5		; 1061 - fd	}
 	jz	X1066		; 1062 - c6 66	Ff
-	call	X10aa		; 1064 - 14 aa	.*
+	call	syserr_a	; 1064 - 14 aa	.*
 X1066:	mov	a,r3		; 1066 - fb	{
 	jz	X106b		; 1067 - c6 6b	Fk
-	call	X10aa		; 1069 - 14 aa	.*
+	call	syserr_a	; 1069 - 14 aa	.*
 X106b:	mov	a,r4		; 106b - fc	|
-	jz	X1070		; 106c - c6 70	Fp
-	call	X10aa		; 106e - 14 aa	.*
-X1070:	mov	r0,#0x98	; 1070 - b8 98	8.
+	jz	init_idata	; 106c - c6 70	Fp
+	call	syserr_a	; 106e - 14 aa	.*
+init_idata:
+	mov	r0,#0x98	; 1070 - b8 98	8.
 X1072:	mov	a,r0		; 1072 - f8	x
 	movp	a,@a		; 1073 - a3	#
 	jz	X1081		; 1074 - c6 81	F.
@@ -1997,20 +2002,23 @@ X108e:	call	GPIB_intparsage	; 108e - 54 00	T.
 	sel	mb0		; 1095 - e5	e
 	jmp	X108c		; 1096 - 04 8c	..
 ;
-tbl_datainit?:
-	db	0x3f					; 1098 ?	; looks like datainit[0 + 2i] = ramaddr, datainit[1 + 2i] = initial value
-	db	0x25,0x40,0x7,0x0			; 1099 %@..
+; does iRAM[datainit[0 + 2i]] = datainit[1 + 2i]
+tbl_datainit:
+	db	0x3f,0x25,0x40,0x7,0x0			; 1098 ?%@..
 ;
 X109d:	mov	r0,#0x7f	; 109d - b8 7f	8.
 	clr	a		; 109f - 27	'
 X10a0:	mov	@r0,a		; 10a0 - a0	 
 	djnz	r0,X10a0	; 10a1 - e8 a0	h 
 	mov	r2,#0xc1	; 10a3 - ba c1	:A
-	call	X10a9		; 10a5 - 14 a9	.)
+; : UC RAM FAIL
+	call	syserr_r2	; 10a5 - 14 a9	.)
 	jmp	X1050		; 10a7 - 04 50	.P
 ;
-X10a9:	mov	a,r2		; 10a9 - fa	z
-X10aa:	mov	r2,a		; 10aa - aa	*
+syserr_r2:
+	mov	a,r2		; 10a9 - fa	z
+syserr_a:
+	mov	r2,a		; 10aa - aa	*
 	movp	a,@a		; 10ab - a3	#
 	mov	r0,#0x42	; 10ac - b8 42	8B
 	orl	a,@r0		; 10ae - 40	@
@@ -2023,14 +2031,20 @@ X10aa:	mov	r2,a		; 10aa - aa	*
 	mov	a,@r0		; 10b6 - f0	p
 	jnz	retr_10c0	; 10b7 - 96 c0	.@
 X10b9:	clr	c		; 10b9 - 97	.
-	call	disp_print1	; 10ba - f4 08	t.
+	call	disp_print1_r2	; 10ba - f4 08	t.
 	sel	mb1		; 10bc - f5	u
 	call	X1868		; 10bd - 14 68	.h
 	sel	mb0		; 10bf - e5	e
 retr_10c0:
 	retr			; 10c0 - 93	.
 ;
-tbl_flaginit?:
+; offs => flag,str
+; c1: 02,47 UC RAM FAIL
+; c3: 04,54 UC ROM FAIL
+; c5: 01,6e UNCALIBRATED
+; c7: 20,7b AD LINK FAIL
+; c9: 10,88 AD TEST FAIL
+tbl_flagerrors:
 	db	0x2,0x47,0x4,0x54,0x1,0x6e,0x20,0x7b	; 10c1 .G.T.n {
 	db	0x10,0x88				; 10c9 ..
 ;
@@ -2171,7 +2185,7 @@ keyjmp_shifted:
 keyjmp_85_modechange:
 	mov	a,r0		; 1185 - f8	x
 	add	a,#0xe1		; 1186 - 03 e1	.a
-	jmp	X15a8		; 1188 - a4 a8	$(
+	jmp	func_change	; 1188 - a4 a8	$(
 ;
 keyjmp_8a_LCL:
 	orl	p2,#0xf		; 118a - 8a 0f	..
@@ -2510,30 +2524,30 @@ GPIB_sendreading?:
 	clr	c		; 1358 - 97	.
 	mov	a,@r0		; 1359 - f0	p
 	sel	mb1		; 135a - f5	u
-	call	ascii_getsign	; 135b - b4 15	4.
+	call	append_sign_r1	; 135b - b4 15	4.
 	inc	r0		; 135d - 18	.
-	call	X1d1f		; 135e - b4 1f	4.	; ascii_digitstuff
+	call	append_hsdigit	; 135e - b4 1f	4.	; ascii_digitstuff
 	djnz	r3,X1365	; 1360 - eb 65	ke
 	mov	@r1,#0x2e	; 1362 - b1 2e	1.	;  '.'
 	inc	r1		; 1364 - 19	.
-X1365:	call	X1d23		; 1365 - b4 23	4#
+X1365:	call	append_lsdigit	; 1365 - b4 23	4#
 	djnz	r3,X136c	; 1367 - eb 6c	kl
 	mov	@r1,#0x2e	; 1369 - b1 2e	1.
 	inc	r1		; 136b - 19	.
-X136c:	call	X1d1f		; 136c - b4 1f	4.
+X136c:	call	append_hsdigit	; 136c - b4 1f	4.
 	djnz	r3,X1373	; 136e - eb 73	ks
 	mov	@r1,#0x2e	; 1370 - b1 2e	1.
 	inc	r1		; 1372 - 19	.
-X1373:	call	X1d23		; 1373 - b4 23	4#
-	call	X1d1f		; 1375 - b4 1f	4.
-	call	X1d23		; 1377 - b4 23	4#
+X1373:	call	append_lsdigit	; 1373 - b4 23	4#
+	call	append_hsdigit	; 1375 - b4 1f	4.
+	call	append_lsdigit	; 1377 - b4 23	4#
 X1379:	mov	@r1,#0x45	; 1379 - b1 45	1E
 	mov	a,r6		; 137b - fe	~
 	clr	c		; 137c - 97	.
 	mov	r1,#0x7c	; 137d - b9 7c	9|
-	call	ascii_getsign	; 137f - b4 15	4.
+	call	append_sign_r1	; 137f - b4 15	4.
 	mov	a,r6		; 1381 - fe	~
-	call	X1d25		; 1382 - b4 25	4%
+	call	append_digit	; 1382 - b4 25	4%
 	sel	mb0		; 1384 - e5	e
 	mov	r0,#0x38	; 1385 - b8 38	88
 	mov	a,@r0		; 1387 - f0	p
@@ -2672,7 +2686,8 @@ jmpt1407_4b:
 	clr	c		; 1450 - 97	.
 	rrc	a		; 1451 - 67	g
 	jz	X145a		; 1452 - c6 5a	FZ
-X1454:	jmp	GPIB_RXbad	; 1454 - 44 87	D.
+jmp_rxbad:
+	jmp	GPIB_RXbad	; 1454 - 44 87	D.
 ;
 X1456:	call	sub_17E9	; 1456 - f4 e9	ti
 	jmp	GPIB_reparse_ISR1; 1458 - 44 8f	D.
@@ -2692,13 +2707,13 @@ X1466:	mov	r2,#0xab	; 1466 - ba ab	:+
 jmpt1407_6d:
 	jmp	X1530		; 146d - a4 30	$0
 ;
-jmpt1407_6f:
+GPIBjmp_6f_Ffunc:
 	mov	a,r6		; 146f - fe	~
-	jz	X1454		; 1470 - c6 54	FT
+	jz	jmp_rxbad	; 1470 - c6 54	FT
 	add	a,#0xf8		; 1472 - 03 f8	.x
-	jc	X1454		; 1474 - f6 54	vT
+	jc	jmp_rxbad	; 1474 - f6 54	vT
 	mov	a,r6		; 1476 - fe	~
-	call	X15a8		; 1477 - b4 a8	4(
+	call	func_change	; 1477 - b4 a8	4(
 	jmp	GPIB_reparse_ISR1; 1479 - 44 8f	D.
 ;
 jmpt1407_7b:
@@ -2743,7 +2758,7 @@ jmpt1407_a6:
 	mov	a,r6		; 14a6 - fe	~
 	add	a,#0xfa		; 14a7 - 03 fa	.z
 	add	a,#0x3		; 14a9 - 03 03	..
-	jnc	X1454		; 14ab - e6 54	fT
+	jnc	jmp_rxbad	; 14ab - e6 54	fT
 	mov	a,r6		; 14ad - fe	~
 	call	X167c		; 14ae - d4 7c	T|
 	jmp	GPIB_reparse_ISR1; 14b0 - 44 8f	D.
@@ -2784,7 +2799,7 @@ X14d2:	mov	r0,#0x2b	; 14d2 - b8 2b	8+
 	jmp	X1449		; 14d5 - 84 49	.I
 ;
 ; write to CALRAM !!
-jmpt1407_d7:
+GPIBjmp_d7_Xwrite:
 	orl	p2,#0xf		; 14d7 - 8a 0f	..
 	anl	p2,#0xf7	; 14d9 - 9a f7	.w	; calRAM_CE
 	mov	r0,#0x2b	; 14db - b8 2b	8+
@@ -2799,7 +2814,7 @@ X14e1:	orl	p2,#0xf		; 14e1 - 8a 0f	..	; GPIB_release
 jmpt1407_e7:
 	mov	a,r6		; 14e7 - fe	~
 	anl	a,#0xfe		; 14e8 - 53 fe	S~
-	jnz	X1454		; 14ea - 96 54	.T
+	jnz	jmp_rxbad	; 14ea - 96 54	.T
 	mov	a,r6		; 14ec - fe	~
 	mov	r0,#0x40	; 14ed - b8 40	8@
 	rl	a		; 14ef - e7	g
@@ -2863,11 +2878,11 @@ X1530:	mov	r2,#0x7c	; 1530 - ba 7c	:|
 	rl	a		; 1538 - e7	g
 	swap	a		; 1539 - 47	G
 	sel	mb1		; 153a - f5	u
-	call	X1d25		; 153b - b4 25	4%
+	call	append_digit	; 153b - b4 25	4%
 	clr	a		; 153d - 27	'
 	xch	a,@r0		; 153e - 20	 
 	anl	a,#0x7		; 153f - 53 07	S.
-	call	X1d25		; 1541 - b4 25	4%
+	call	append_digit	; 1541 - b4 25	4%
 	sel	mb0		; 1543 - e5	e
 	jmp	GPIB_reparse_ISR1; 1544 - 44 8f	D.
 ;
@@ -2939,7 +2954,9 @@ X1597:	mov	r7,#0xbf	; 1597 - bf bf	??
 	movx	@r0,a		; 15a5 - 90	.
 	jmp	dip_parse	; 15a6 - c4 00	D.
 ;
-X15a8:	swap	a		; 15a8 - 47	G
+; i: a = new mode (1 = DCV, 2=ACV, 2W,etc..)
+func_change:
+	swap	a		; 15a8 - 47	G
 	rl	a		; 15a9 - e7	g
 	mov	r0,#0x3f	; 15aa - b8 3f	8?
 	xch	a,@r0		; 15ac - 20	 
@@ -3006,7 +3023,8 @@ print_GPIBaddr:
 	jf0	X160d		; 1602 - b6 0d	6.
 	mov	r2,#0x95	; 1604 - ba 95	:.
 	clr	c		; 1606 - 97	.
-	call	disp_print1	; 1607 - f4 08	t.
+; print HPIB ADRS TO
+	call	disp_print1_r2	; 1607 - f4 08	t.
 	mov	r0,#0x5d	; 1609 - b8 5d	8]
 	mov	@r0,#0x6	; 160b - b0 06	0.
 X160d:	orl	p2,#0xf		; 160d - 8a 0f	..
@@ -3176,7 +3194,8 @@ ret_16e7:
 ;
 	org	0x16e9
 ;
-X16e9:	anl	p2,#0xbf	; 16e9 - 9a bf	.?
+bridge_CAL_test:
+	anl	p2,#0xbf	; 16e9 - 9a bf	.?
 	nop			; 16eb - 00	.
 	ret			; 16ec - 83	.
 ;
@@ -3206,7 +3225,7 @@ romck_16fd:
 	sel	mb1		; 1705 - f5	u
 	jmp	romck_18fc	; 1706 - 04 fc	.|
 ;
-disp_print1:
+disp_print1_r2:
 	mov	r0,#0x55	; 1708 - b8 55	8U	; print predefined strings from table, to disp buf
 	mov	a,@r0		; 170a - f0	p
 	orl	a,#0x6		; 170b - 43 06	C.
@@ -3236,6 +3255,7 @@ disp_print_r2:
 ;
 X172d:	jf0	retr_1739	; 172d - b6 39	69
 	mov	r0,#0x55	; 172f - b8 55	8U
+; 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
 	mov	a,@r0		; 1731 - f0	p
 	orl	a,#0x80		; 1732 - 43 80	C.
 	jf1	X1738		; 1734 - 76 38	v8
@@ -3453,10 +3473,11 @@ X18a2:	mov	r3,#0x38	; 18a2 - bb 38	;8
 	call	X1f26		; 18a4 - f4 26	t&
 X18a6:	mov	r0,#0x55	; 18a6 - b8 55	8U
 	mov	a,@r0		; 18a8 - f0	p
-	jb4	X18ad		; 18a9 - 92 ad	.-
+	jb4	render_reading	; 18a9 - 92 ad	.-
 	jmp	X18e6		; 18ab - 04 e6	.f
 ;
-X18ad:	clr	f0		; 18ad - 85	.
+render_reading:
+	clr	f0		; 18ad - 85	.
 	cpl	f0		; 18ae - 95	.
 	clr	f1		; 18af - a5	%
 	cpl	f1		; 18b0 - b5	5
@@ -3472,22 +3493,22 @@ X18ad:	clr	f0		; 18ad - 85	.
 	cpl	c		; 18bf - a7	'
 	mov	r1,#0x44	; 18c0 - b9 44	9D
 	mov	a,@r0		; 18c2 - f0	p
-	call	X1d06		; 18c3 - b4 06	4.
+	call	append_optsign_r6; 18c3 - b4 06	4.
 	inc	r0		; 18c5 - 18	.
-	call	X1d1f		; 18c6 - b4 1f	4.
-	call	X1d23		; 18c8 - b4 23	4#
-	call	X1d1f		; 18ca - b4 1f	4.
-	call	X1d23		; 18cc - b4 23	4#
+	call	append_hsdigit	; 18c6 - b4 1f	4.
+	call	append_lsdigit	; 18c8 - b4 23	4#
+	call	append_hsdigit	; 18ca - b4 1f	4.
+	call	append_lsdigit	; 18cc - b4 23	4#
 	mov	a,r6		; 18ce - fe	~
 	jb1	X18d8		; 18cf - 32 d8	2X
-	call	X1d1f		; 18d1 - b4 1f	4.
+	call	append_hsdigit	; 18d1 - b4 1f	4.
 	mov	a,r6		; 18d3 - fe	~
 	jb0	X18d8		; 18d4 - 12 d8	.X
-	call	X1d23		; 18d6 - b4 23	4#
+	call	append_lsdigit	; 18d6 - b4 23	4#
 X18d8:	mov	a,r6		; 18d8 - fe	~
 	anl	a,#0x3		; 18d9 - 53 03	S.
 	cpl	a		; 18db - 37	7
-	add	a,#0xb7		; 18dc - 03 b7	.7
+pad:	add	a,#0xb7		; 18dc - 03 b7	.7
 	mov	r2,a		; 18de - aa	*
 	clr	c		; 18df - 97	.
 X18e0:	sel	mb0		; 18e0 - e5	e
@@ -3751,7 +3772,7 @@ X1a3e:	mov	r2,#0xb8	; 1a3e - ba b8	:8
 	mov	r0,#0x44	; 1a40 - b8 44	8D
 	clr	c		; 1a42 - 97	.
 	sel	mb0		; 1a43 - e5	e
-	call	disp_print1	; 1a44 - f4 08	t.
+	call	disp_print1_r2	; 1a44 - f4 08	t.
 	sel	mb1		; 1a46 - f5	u
 	call	X1868		; 1a47 - 14 68	.h
 	sel	mb0		; 1a49 - e5	e
@@ -3861,7 +3882,8 @@ X1b2b:	rl	a		; 1b2b - e7	g
 	mov	@r0,a		; 1b31 - a0	 
 	retr			; 1b32 - 93	.
 ;
-tbl_1b33:	db	0xf5,0xe4,0xc7,0xc7,0xe2,0xe2,0x61,0xff	; 1b33 udGGbba.
+; fits with func selection (1=DCV, 2=ACV, etc.)
+tbl_1b33:	db	0xf5,0xe4,0xc7,0xc7,0xe2,0xe2,0x61	; 1b33 udGGbba
 ;
 	org	0x1cfc
 ;
@@ -3876,33 +3898,41 @@ romck_1cfc:
 	mov	r6,a		; 1d03 - ae	.
 	jmp	romck_1efc	; 1d04 - c4 fc	D|
 ;
-X1d06:	jb7	X1d1b		; 1d06 - f2 1b	r.
+append_optsign_r6:
+	jb7	append_neg	; 1d06 - f2 1b	r.
 	mov	a,r6		; 1d08 - fe	~
 	anl	a,#0x60		; 1d09 - 53 60	S`
 	xrl	a,#0x20		; 1d0b - d3 20	S 
-	jnz	X1d11		; 1d0d - 96 11	..
-	jmp	X1d17		; 1d0f - a4 17	$.
+	jnz	append_space	; 1d0d - 96 11	..
+	jmp	append_pos	; 1d0f - a4 17	$.
 ;
-X1d11:	mov	a,#0x20		; 1d11 - 23 20	# 
-	jmp	X1d29		; 1d13 - a4 29	$)
+append_space:
+	mov	a,#0x20		; 1d11 - 23 20	# 
+	jmp	append_tail	; 1d13 - a4 29	$)
 ;
-ascii_getsign:
-	jb7	X1d1b		; 1d15 - f2 1b	r.	; (a=val, r1=&dest++)
-X1d17:	mov	a,#0x2b		; 1d17 - 23 2b	#+
-	jmp	X1d29		; 1d19 - a4 29	$)
+append_sign_r1:
+	jb7	append_neg	; 1d15 - f2 1b	r.
+append_pos:
+	mov	a,#0x2b		; 1d17 - 23 2b	#+
+	jmp	append_tail	; 1d19 - a4 29	$)
 ;
-X1d1b:	mov	a,#0x2d		; 1d1b - 23 2d	#-
-	jmp	X1d29		; 1d1d - a4 29	$)
+append_neg:
+	mov	a,#0x2d		; 1d1b - 23 2d	#-
+	jmp	append_tail	; 1d1d - a4 29	$)
 ;
-X1d1f:	mov	a,@r0		; 1d1f - f0	p
+append_hsdigit:
+	mov	a,@r0		; 1d1f - f0	p
 	swap	a		; 1d20 - 47	G
-	jmp	X1d25		; 1d21 - a4 25	$%
+	jmp	append_digit	; 1d21 - a4 25	$%
 ;
-X1d23:	mov	a,@r0		; 1d23 - f0	p
+append_lsdigit:
+	mov	a,@r0		; 1d23 - f0	p
 	inc	r0		; 1d24 - 18	.
-X1d25:	anl	a,#0xf		; 1d25 - 53 0f	S.
+append_digit:
+	anl	a,#0xf		; 1d25 - 53 0f	S.
 	orl	a,#0x30		; 1d27 - 43 30	C0
-X1d29:	jc	X1d2e		; 1d29 - f6 2e	v.
+append_tail:
+	jc	X1d2e		; 1d29 - f6 2e	v.
 	mov	@r1,a		; 1d2b - a1	!
 	inc	r1		; 1d2c - 19	.
 	ret			; 1d2d - 83	.
@@ -4054,10 +4084,20 @@ X1f5d:	call	X1f2d		; 1f5d - f4 2d	t-
 	sel	mb1		; 1f5f - f5	u
 	retr			; 1f60 - 93	.
 ;
-tbl_1f61:	db	0x20,0x0,0xd,0x46,0xd,0x47,0x20,0x45	; 1f61  ..F.G E
+; M/K/G etc. Some weirdness
+; " \0MFMG E"
+; " F GKEKF"
+; "KGMEM"
+tbl_prefixes:
+	db	0x20,0x0,0xd,0x46,0xd,0x47,0x20,0x45	; 1f61  ..F.G E
 	db	0x20,0x46,0x20,0x47,0xb,0x45,0xb,0x46	; 1f69  F G.E.F
 	db	0xb,0x47,0xd,0x45,0xd			; 1f71 .G.E.
-tbl_1f76:	db	0x46,0x18,0x46,0x16,0x4,0x3,0x16,0x1	; 1f76 F.F.....
+; unit suffixes
+; FXFV DCVA
+; COHM OHMA
+; DCAA COHM
+tbl_units:
+	db	0x46,0x18,0x46,0x16,0x4,0x3,0x16,0x1	; 1f76 F.F.....
 	db	0x3,0xf,0x8,0xd,0xf,0x8,0xd,0x1		; 1f7e ........
 	db	0x4,0x3,0x1,0x1,0x3,0xf,0x8,0xd		; 1f86 ........
 ;
