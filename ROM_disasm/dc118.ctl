@@ -50,19 +50,46 @@ C 1000
 C 1003
 C 1007
 
+;************* global iRAM vars
+; S doesn't work great for iRAM: it replaces "orl" / "anl" instances too
+;s 40 mode40
+
 ;************* functions/locs with >95% confidence
-L 00BA GPIB_trig
+
 L 0200 check_calentry
 ! 0200 i: a=calid. verify checksum of entry
 l 0204 check_calentr_a
 ! 0204 verify checksum at a=addr
-l 0400 GPIB_SPstuff
 ! 043b reassemble 6 nibs from CALRAM
 ! 0506 (movx = from CALRAM)
+# 0a3b update cal offset[6] + checksum
+# 0aa5 update cal gain[5] + checksum
+# 0ab4 print "SELF TEST" (wtf)
+# 0ab8 print "UC ROM FAIL"
+
 l 055c isol_synctx?
 l 0600 isol_syncrx?
+! 0651 read keypad (useless?)
+! 0659 get DIPswitch (useless?)
 l 0800 set_A12_ret
-l 086f keypad_checkloop?
+! set A12; call 1807, then ret to orig (block0)
+l 0866 kp_call_a12
+l 086f keypad_checkloop1
+! 086f: see also keypad loop @ 1118 !
+l 0872 kp_initloop
+l 0876 kp_loop_top
+! 0879 r7 = p1_read
+l 0887 key_pressed?
+! 088c (r7 = p1)
+l 08a0 key_up?
+l 08a8 key_down?
+l 08bd keypad_a12ret
+! 08c5 j if no keys pressed
+l 08f6 keyparse_cont1
+l 0938 key_sgltrig?
+l 0acc call_disp_r2
+l 0aee keyparse_cont1b
+
 L 0B06 BCDstuff_0B06
 L 0D6A BCDstuff_0D6a
 ! 0d6a not sure. i: r0=caladdr, r1=&dest[3], 
@@ -86,10 +113,23 @@ l 0f4c write_CALcks_noget
 l 0f65 write_calRAM
 ! 0f65 a = val, r1 = addr; o: flags
 
-l 10cb GPIB_SPstatus
-! 10cb missing xrefs due to mb0 not assumed
+
+l 1118 kp_check2_init
+l 111c kp_loop2_top
+l 112e kp_keypressed2
+! 112e (r7 = p1)
+l 114b key_LCL_or_SRQ
+! 114d : here, iterate through tbl_keys @ 1320 !
+l 1157 key_found
+! 1157 when found, r0 = 0x20 + key_id
+
+
+;************* GPIB stuff
+L 00BA GPIB_trig
+l 0400 GPIB_SPstuff
+l 10cb GPIB_SPstat_r7
 l 1200 GPIB_intparsage
-! 1200 missing xrefs due to mb0
+! 1200 missing xrefs due to mb0?
 ! 1265 range check on received data : alphanum, digits, and \r\n
 l 1287 GPIB_RXbad
 ! 1287 alphab out of range / other stuf?
@@ -104,16 +144,134 @@ l 12c0 GPIB_RXdigit
 l 12c8 GPIB_RXalpha
 ! 12c8 a = rxb - 0x41
 l 12f0 GPIB_ISR1_BO
+l 1339 GPIB_sendreading?
+L 19AF GPIB_getSPSTAT?
+! 00BC GPIB_CS
+! 00C2 AUXMODE=4 trig
+! 00C4 GPIB_release
+! 0402 GPIB_CS
+! 040F SPSTATUS
+! 0411 SPMODE
+! 065C GPIB_CS (for init)
+! 0662 AUXMODE = 02 creset
+! 0664 AUXMODE=0 pon
+! 0669 ADDRMODE = 80 tonly
+! 066F DOUT = 0
+! 0672 SPMODE = 0
+! 0673 a=SPSTAT
+! 0676 GPIB_release
+! 10DA SPSTATUS
+! 10DC SPMODE = a
+! 118C GPIB_CS for RTLstuff
+! 1192 AUXMODE = 0D setRTL
+! 1195 AUXMODE = 05 clrRTL
+! 11a0 calld with mb0
+! 1205 get ADR0 ?
+! 1206 check INT bit
+! 120A if (ADR0.INT == 1)
+! 120C get ISR2
+! 1210 ISR2.ADSC
+! 1212 ISR2.REMC
+! 1214 ISR2.SPC
+! 1218 get ISR1
+! 121D ISR1.BI
+! 121F ISR1.BO
+! 1221 ISR1.DEC
+! 1223 ISR1.GET
+! 1225 clr BI, DEC, APT
+! 122F read ADDR0 ?
+! 1230 check INT bit
+! 1251 ISR1.BI
+! 1253 get DIN
+! 1254 r7 = DIN
+! 1258 check ISR2s.REM ?
+! 125C GPIB data_in while remote
+! 1261 a = DIN
+! 1267 - 'z' +1
+! 126B 'a'
+! 126D discard lowercase ?
+! 126F 'Z'+1
+! 1273  'A'
+! 1277  '9' -1
+! 127B  '0'
+! 127F  0x0E
+! 1283  0x09
+! 128F (get ISR1)
+! 1295 '-'
+! 129A ','
+! 129F '+'
+! 12A4 ' '
+! 12AA check if 0x3B ';'
+! 12B0 a = iRAM[0x2A] ?
+! 12c6 (jmpindex = iRAM[r0])
+! 12C9 iRAM[2A]
+! 12DF a = [0x1300 | a]
+l 12e9 do_GPIBjmp
+! 12E9 (a = iRAM[2A],r7 = DIN)
+! 134F GPIB_CS
+! 135E ascii_digitstuff
+! 1362  '.'
+! 13A1 AUXMODE=06 sendEOI
+! 13AB DOUT = data
+l 1400 GPIB_jmp1
+! 1400 i : r0=&val, E [1,18] ?
+! 14E1 GPIB_release
+! 14E3 GPIB_CS
+! 14E5 wtf
+l 155c GPIB_init
+! 1565 check "power-on SRQ" dipswitch
+! 156d GPIB_CS
+! 1572 AUXMODE = creset
+! 1577 ISR1enable = GET, DEC, BO, BI
+! 157b ISR2en = SPC, LLOC, REMC, ADSC
+! 157e SPMODE = 0
+! 1583 AUXMODE : set clock
+! 1586 AUXRA = 0
+! 1589 AUXRB = RFD holdoff GET+DEC
+! 158e GPIB_CS
+! 1592 AUXMODE : pon
+! 1617 GPIB_CS for setaddr
+! 161D if addr > 0x1f?
+! 1621 ADRMODE = 1 (prim-prim)
+! 1626 ADR1 = 0, DT + DL
+! 1628 ADR0 = DIPaddr
+! 1645 DIP addr > 0x1f
+! 1647 ADRMODE = tonly
+! 1650 read 50/60Hz switch. GPIB_release
+! 1652 DIPadd_sel
+! 1654 get DIP addr again
+! 1656 keep 50/60Hz bit
+! 17e9 get iRAM[2A], if < 0x3F then ret a |= 0x40 => check MTA/MLA ?
+! 1933 GPIB_CS
+! 199B GPIB_CS
+! 199F GPIB_release
+! 19B1 SPSTAT
+! 19B3 Carry = SRQS
+! 19b9 get ADRS
+! 1E13 still mb0
+! 1E20 GPIB_CS
+! 1E26 AUXMODE = TRIG
+! 1E2A a = ADDRSTAT?
+! 1F05 ret to 16a5 !
+! 1F8E r7 = rxbyte
+
+
+! 155f get DIP
 L 1600 dip_parse
+! 160F DIP_sel
+! 1611 get DIP setting
 ! 1650 read 50/60Hz switch
 l 16c0 clr_ram26_b6_0
 l 1d15 ascii_getsign
 ! 1d15 (a=val, r1=&dest++)
 
 ;**** disp stuff
+L 0Dc5 print_calstr_r2
+! 0dc5 i: r2=&src in page 0x300
+l 1602 print_GPIBaddr
 l 1708 disp_print1
 ! 1708 print predefined strings from table, to disp buf
-l 1724 disp_print2
+l 1724 disp_print_r2
 l 17c5 disp_putc
 ! 17c5 write to dispbuf : i: a=val, r1=&dest,
 l 1906 disp_setpwo
@@ -187,28 +345,23 @@ L 1949 retr_1949
 l 0106 isol_dly
 ! 0106 approx 10-15ms ? rough calc
 
-L 0Dc5 sub_0dc5
-! 0dc5 i: r2=&src in 0x300 (PC & 0xFF). copy to RAM[0x44+idx] until src[idx]==0 ?
-
 L 0f28 cal58_sub2C
 ! 0f28 cal58 -= cal2C ? not sure
-l 1185 jmpt1169_85
-l 118a jmpt1169_8a
-l 1197 jmpt1169_97
-l 11a1 jmpt1169_a1
-l 11a5 jmpt1169_a5
-l 11af jmpt1169_af
+l 1185 keyjmp_85_modechange
+l 118a keyjmp_8a_LCL
+l 1197 keyjmp_97_AUTO
+l 11a1 keyjmp_a1_UP
+l 11a5 keyjmp_a5_DOWN
+l 11af keyjmp_af_SGL
 ! 11af called with mb0
-l 11bf jmpt1169_bf
-l 11c4 jmpt1169_c4
-l 11c9 jmpt1169_c9
-l 11cd jmpt1169_cd
-l 11d6 jmpt1169_d6
-l 11e3 jmpt1169_e3
-l 11e7 jmpt1169_e7
-l 11ef jmpt1169_ef
-l 1339 GPIB_sendreading?
-
+l 11bf keyjmp_bf_SHIFT
+l 11c4 keyjmp_c4_shift345
+l 11c9 keyjmp_c9_ADRS
+l 11cd keyjmp_cd_CAL
+l 11d6 keyjmp_d6_INT
+l 11e3 keyjmp_e3_SRQ
+l 11e7 keyjmp_e7_AUTOZ
+l 11ef keyjmp_ef_TESTRST
 
 l 1419 jmpt1407_19
 l 1447 jmpt1407_47
@@ -234,35 +387,26 @@ l 15bb sub_15bb
 l 17da cal_toggle0
 ! 17da (toggle calram[0] and ret a)
 l 17e9 sub_17E9
-! 17e9 get iRAM[2A], if < 0x3F then ret a |= 0x40 => check MTA/MLA ?
-L 19AF GPIB_getSPSTAT?
+l 1800 clr_A12_ret
 l 1a4c _cal_toggle0
 ! 1a4c toggle calram[0] and ret a
 ! 1a4e SRAM_CS
-! 1f8e r7=rxbyte
 
 
 ;************* general comments
+;vaguely sorted
 
-! 00BC GPIB_CS
-! 00C2 AUXMODE=4 trig
-! 00C4 GPIB_release
+! 068d calRAM_CE
+! 081e calRAM_CE
+! 0e02 calRAM_CE
+! 14c3 calRAM_CE
+
+
 ! 0106 clr P27 : isol_out
 ! 0201 idcal = stored @ RAM0[3F]
-! 0402 GPIB_CS
-! 040F SPSTATUS
-! 0411 SPMODE
 ! 0451 cal2C[] += cal36[] ?
 ! 063C set P27 (isol_dout)
 ! 0644 clr P27 (isol_dout)
-! 065C GPIB_CS (for init)
-! 0662 AUXMODE = 02 creset
-! 0664 AUXMODE=0 pon
-! 0669 ADDRMODE = 80 tonly
-! 066F DOUT = 0
-! 0672 SPMODE = 0
-! 0673 a=SPSTAT
-! 0676 GPIB_release
 ! 0678 calRAM_CE
 ! 0823 invert nib @ 00 . lols
 ! 0A3C val: hinib
@@ -276,114 +420,39 @@ l 1a4c _cal_toggle0
 ! 0D53 entry 0x11
 ! 0D58 write full entry
 ! 0D9B 0x44[0..7]=0
-! 0DCC @(0x0300 | a)
 ! 103B clear iRAM
 ! 1040 write 0xFF to iRAM
 ! 1049 test iRAM[idx]==0xFF
-! 10DA SPSTATUS
-! 10DC SPMODE = a
-! 114e tbl read @ 1300[]
-! 1168 INFO: indirect jump
-! 118C GPIB_CS for RTLstuff
-! 1192 AUXMODE = 0D setRTL
-! 1195 AUXMODE = 05 clrRTL
-! 11a0 calld with mb0
-! 1205 get ADR0 ?
-! 1206 check INT bit
-! 120A if (ADR0.INT == 1)
-! 120C get ISR2
-! 1210 ISR2.ADSC
-! 1212 ISR2.REMC
-! 1214 ISR2.SPC
-! 1218 get ISR1
-! 121D ISR1.BI
-! 121F ISR1.BO
-! 1221 ISR1.DEC
-! 1223 ISR1.GET
-! 1225 clr BI, DEC, APT
-! 122F read ADDR0 ?
-! 1230 check INT bit
-! 1251 ISR1.BI
-! 1253 get DIN
-! 1254 r7 = DIN
-! 1258 check ISR2s.REM ?
-! 125C GPIB data_in while remote
-! 1261 a = DIN
-! 1267 - 'z' +1
-! 126B 'a'
-! 126D discard lowercase ?
-! 126F 'Z'+1
-! 1273  'A'
-! 1277  '9' -1
-! 127B  '0'
-! 127F  0x0E
-! 1283  0x09
-! 128F (get ISR1)
-! 1295 '-'
-! 129A ','
-! 129F '+'
-! 12A4 ' '
-! 12AA check if 0x3B ';'
-! 12B0 a = iRAM[0x2A] ?
-! 12C9 iRAM[2A]
-! 12DF a = [0x1300 | a]
-! 12E9 (a = iRAM[2A],r7 = DIN)
-! 134F GPIB_CS
-! 135E ascii_digitstuff
-! 1362  '.'
-! 13A1 AUXMODE=06 sendEOI
-! 13AB DOUT = data
-! 13E8 INFO: indirect jump
-! 1400 i : r0=&val.
-! 1406 INFO: indirect jump
-! 14D9 calRAM_CE
-! 14E1 GPIB_release
-! 14E3 GPIB_CS
-! 14E5 wtf
-! 1600 parse DIP switch stuff
-! 160F GPIB_DIPsel
-! 1611 get DIP setting
-! 1617 GPIB_CS for setaddr
-! 161D if addr > 0x1f?
-! 1621 ADRMODE = 1 (prim-prim)
-! 1626 ADR1 = 0, DT + DL
-! 1628 ADR0 = DIPaddr
-! 1645 DIP addr > 0x1f
-! 1647 ADRMODE = tonly
-! 1650 read 50/60Hz switch. GPIB_release
-! 1652 DIPadd_sel
-! 1654 get DIP addr again
-! 1656 keep 50/60Hz bit
-! 17e9 get iRAM[2A], if < 0x3F then ret a |= 0x40 => check MTA/MLA ?
-! 1800 clr A12
-! 1933 GPIB_CS
 
-! 199B GPIB_CS
-! 199F GPIB_release
-! 19B1 SPSTAT
-! 19B3 Carry = SRQS
-! 1E13 still mb0
-! 1E20 GPIB_CS
-! 1E26 AUXMODE = TRIG
-! 1E2A a = ADDRSTAT?
-! 1F05 ret to 16a5 !
-! 1F8E r7 = rxbyte
+! 114e tbl read @ 1300[]
+
+! 14D9 calRAM_CE
 
 
 ;************* data / ignore sections
 l 0174 tbl_0174
 b 0174-01a6
-l 0306 cmd_0306[0
-L 0313 cmd_0313[1	; goes with sub 0DC5
-l 0320 cmd_0320[2
-L 032D cmd_032D[3
-l 033a cmd_033a[4
-l 0347 cmd_0347[5
-l 0354 cmd_0354[6
-l 0361 cmd_0361[7
-l 036e cmd_036e[8
-L 037B cmd_037B[9
 
+l 0306 calstr_06
+# 0306 CAL ABORTED
+l 0313 calstr_13
+# 0313 CAL FINISHED
+l 0320 calstr_20
+# 0320 ENABLE CAL
+l 032D calstr_2D
+# 032D CALIBRATING
+l 033a calstr_3a
+# 033a VALUE ERROR
+l 0347 calstr_47
+# 0347 AC I VAL ERR
+l 0354 calstr_54
+# 0354 CAL RAM FAIL
+l 0361 calstr_61
+# 0361 AD LINK FAIL
+l 036e calstr_6e
+# 036e AD SLOPE ERR
+l 037B calstr_7B
+# 037B INVALID ZERO
 B 0306-0387
 
 l 04db tbl_spstatus?
@@ -399,11 +468,24 @@ b 1098-109c
 l 10c1 tbl_flaginit?
 b 10c1-10ca
 
-l 1169 jmptable_1169
-b 1169-1184
+# 1169 keycode jmp tables !
+# 1169 DCV,ACV,2W,4W,   DCA,ACA,SHIFT,AUTO
+# 1169 UP,DOWN,INT,SGL,  SRQ,LCL
+
+l 1169 keyjmp_unshifted
+b 1169-1177
+l 1177 keyjmp_shifted
+b 1176-1184
 
 l 1306 tbl_1306
-b 1306-132e
+b 1306-131f
+
+l 1320 tbl_keys
+# 1320 keycode lookup !
+# 1320 DCV,ACV,2W,4W, DCA,ACA,SHIFT,AUTO
+# 1320 UP,DOWN,INT,SGL,SRQ,LCL
+
+b 1320-132e
 
 l 13e6 tbl_13e6
 ! 13e6 see movp with 0xe6
@@ -417,18 +499,34 @@ l 1407 jmptable_1407
 ! 1407 looks like GPIB actions
 b 1407-1418
 
-l 173a tbl_173a[0]
-! 173a sizeof elems=0x0D and sometimes 8; 0-terminated, see 1725
-l 1747 tbl_173a[1]
-l 1754 tbl_173a[2]
-l 1761 tbl_173a[3]
-l 176e tbl_173a[4]
-l 177b tbl_173a[5]
-l 1788 tbl_173a[6
-l 1795 tbl_173a[7
-l 17a2 tbl_173a[8
-l 17ab tbl_173a[9
-l 17b8 tbl_173a[0a
+# 173A string tables !
+# 173A bit flags : 0x80 = ?, 0x40 : decimal point !
+# 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
+# 0x40-0x5A ('A'-'Z') permitted too ? => show with decimal point !
+# 0x20 : space ( + 0)
+
+l 173a str173A_3a
+# 173a SELF TEST
+l 1747 str173A_47
+# 1747 UC RAM FAIL
+l 1754 str173A_54
+# 1754 UC ROM FAIL
+l 1761 str173A_61
+# 1761 (all segs?)
+l 176e str173A_6e
+# 176e UNCALIBRATED
+l 177b str173A_7b
+# 177b AD LINK FAIL
+l 1788 str173A_88
+# 1788 AD TEST FAIL
+l 1795 str173A_95
+# 1795 HPIB ADRS TO
+l 17a2 str173A_a2
+# 17a2 OVLD
+l 17ab str173A_ab
+# 17ab (blank)
+l 17b8 str173A_b8
+# 17b8 SELF TEST OK
 b 173a-17c4
 
 l 1b33 tbl_1b33
@@ -446,6 +544,7 @@ b 1ff3-1ffa
 b 1fff
 ;************* forced bank selection
 ;i.e. force sel mb0 / mb1
+m 0 1001
 m 1 135e
 m 1 1365
 m 1 136c
@@ -455,5 +554,18 @@ m 1 1377
 m 1 137f
 m 1 1382
 m 1 1541
+m 0 18e3
+m 0 19bd
+m 0 19c2
+m 0 19c9
+m 0 19cc
+m 0 19d5
+m 0 19dd
+m 0 19e4
+m 0 19eb
+m 0 19f0
+m 0 19f3
+m 0 19fa
+m 0 1a6b
 m 0 1e13
 m 1 1f13
