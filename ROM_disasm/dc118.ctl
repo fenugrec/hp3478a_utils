@@ -60,12 +60,27 @@ L 0200 check_calentry
 ! 0200 i: a=calid. verify checksum of entry
 l 0204 check_calentr_a
 ! 0204 verify checksum at a=addr
-! 043b reassemble 6 nibs from CALRAM
+! 043b reassemble offset[6] from CALRAM
+# 04ad parse cal gain constant
+# 0506 this section seems to parse the cal (offset?) constant,
+# 0506 if the first digit is 8 or 9, the # is negative ?
+l 0506 readcal_r7_sign?
 ! 0506 (movx = from CALRAM)
+! 050d if (a > 8) ?
+l 054e readcal_bot_r6
+! 067c test calRAM read/write ?
 # 0a3b update cal offset[6] + checksum
+# 0a68 read cal offset[6] to iRAM[2C], PBCD
 # 0aa5 update cal gain[5] + checksum
-# 0ab4 print "SELF TEST" (wtf)
-# 0ab8 print "UC ROM FAIL"
+l 0ab4 print_VALUEERR
+l 0ab8 print_CALRAMFAIL
+l 08f8 print_ENABLECAL
+l 0946 print_CALIBRATING
+l 0ac4 print_CALFINISHD
+l 0aca print_CALINVZERO
+# 0af0 print_ENABLECAL
+l 0dd5 print_ACIVALERR
+
 
 l 055c isol_synctx?
 l 0600 isol_syncrx?
@@ -87,24 +102,34 @@ l 08bd keypad_a12ret
 ! 08c5 j if no keys pressed
 l 08f6 keyparse_cont1
 l 0938 key_sgltrig?
-l 0acc call_disp_r2
+l 0acc call_printcal_r2
 l 0aee keyparse_cont1b
-
 L 0B06 BCDstuff_0B06
+! 0CAC write full entry
+# 0cbd 0xCE = &entry0F_gain[5] (entry 0x0F : 3A DC)
+# 0d33 0x18 = &entry01_gain[5] (entry 01 : 300mV DC)
+l 0d68 CAL_ACI_fail
 L 0D6A BCDstuff_0D6a
 ! 0d6a not sure. i: r0=caladdr, r1=&dest[3], 
 L 0d82 readcal_daa
 ! 0D82 do some BCD adj on read nib. i: r0=addr--; o: ret a
+l 0d97 BCD_div?
+# 0d97 fixed cal58 /= (cal2C * 10) ???
+# 0da2 loop 8 times
+# 0da6 loop 0x0A times
+# 0d4b read offset from entry 6 @ 0x4F (ACV)
+# 0D53 write to entry 0x11 @0xDE (AC I)
+! 0D9B 0x44[0..7]=0
 
 L 0E00 getaddr
 ! 0e00 getaddr(idcal) with tableread
 l 0e0d ret_getaddr
-L 0f09 clr_0f09
+L 0f09 memset0_r2
 ! 0f09 clear (r2) bytes @ r0
-L 0f0f cal_cpy5
-! 0f0f i:( r0 = src, r1 = dest) . Copy 5 bytes
-L 0f18 cal2C_add
-! 0f18 BCD add : cal58[] += cal2C[]
+L 0f0f cal_cpy5_to_r1
+# 0f0f i:( r0 = src, r1 = dest) . Copy 5 bytes
+L 0f18 cal58_add2C
+# 0f18 BCD add : cal58[] += cal2C[]
 
 l 0f4a write_CALcks
 ! 0f4a i: (a= id)
@@ -129,11 +154,11 @@ L 00BA GPIB_trig
 l 0400 GPIB_SPstuff
 l 10cb GPIB_SPstat_r7
 l 1200 GPIB_intparsage
-! 1200 missing xrefs due to mb0?
 ! 1265 range check on received data : alphanum, digits, and \r\n
 l 1287 GPIB_RXbad
 ! 1287 alphab out of range / other stuf?
 l 128f GPIB_reparse_ISR1
+l 1294 GPIB_RXother
 ! 1294 rx E [0x0E, 0x2F]
 l 12aa GPIB_RXhidig
 ! 12aa hi digit (0x38-0x3F), a = byte - 0x38
@@ -143,6 +168,7 @@ l 12c0 GPIB_RXdigit
 ! 12c0 a = rxbyte - 0x30.
 l 12c8 GPIB_RXalpha
 ! 12c8 a = rxb - 0x41
+l 1251 GPIB_ISR1_BI
 l 12f0 GPIB_ISR1_BO
 l 1339 GPIB_sendreading?
 L 19AF GPIB_getSPSTAT?
@@ -162,6 +188,8 @@ L 19AF GPIB_getSPSTAT?
 ! 0676 GPIB_release
 ! 10DA SPSTATUS
 ! 10DC SPMODE = a
+! 10e3 SPSTAT
+! 10f4 SPMODE
 ! 118C GPIB_CS for RTLstuff
 ! 1192 AUXMODE = 0D setRTL
 ! 1195 AUXMODE = 05 clrRTL
@@ -181,6 +209,7 @@ L 19AF GPIB_getSPSTAT?
 ! 1225 clr BI, DEC, APT
 ! 122F read ADDR0 ?
 ! 1230 check INT bit
+! 124a SPSTATUS
 ! 1251 ISR1.BI
 ! 1253 get DIN
 ! 1254 r7 = DIN
@@ -205,19 +234,22 @@ L 19AF GPIB_getSPSTAT?
 ! 12B0 a = iRAM[0x2A] ?
 ! 12c6 (jmpindex = iRAM[r0])
 ! 12C9 iRAM[2A]
-! 12DF a = [0x1300 | a]
+! 12DF a = GPIB_alphatbl[a] (tbl @ 1306)
 l 12e9 do_GPIBjmp
 ! 12E9 (a = iRAM[2A],r7 = DIN)
+l 12f2 GPIB_ISR1_DEC
+l 12f4 GPIB_ISR1_GET
 ! 134F GPIB_CS
 ! 135E ascii_digitstuff
 ! 1362  '.'
 ! 13A1 AUXMODE=06 sendEOI
 ! 13AB DOUT = data
 l 1400 GPIB_jmp1
-! 1400 i : r0=&val, E [1,18] ?
+! 1400 i : r0=&val (iRAM[24] always?)
+! 1491 SPSTATUS
+! 14c7 SPSTATUS
 ! 14E1 GPIB_release
 ! 14E3 GPIB_CS
-! 14E5 wtf
 l 155c GPIB_init
 ! 1565 check "power-on SRQ" dipswitch
 ! 156d GPIB_CS
@@ -230,6 +262,9 @@ l 155c GPIB_init
 ! 1589 AUXRB = RFD holdoff GET+DEC
 ! 158e GPIB_CS
 ! 1592 AUXMODE : pon
+! 159d ISR2
+! 15a3 AUXMODE : release RFDhold
+! 15ed AUXMODE : release RFDhold
 ! 1617 GPIB_CS for setaddr
 ! 161D if addr > 0x1f?
 ! 1621 ADRMODE = 1 (prim-prim)
@@ -261,7 +296,7 @@ L 1600 dip_parse
 ! 160F DIP_sel
 ! 1611 get DIP setting
 ! 1650 read 50/60Hz switch
-l 16c0 clr_ram26_b6_0
+l 16c0 clr_ram27_bit7
 l 1d15 ascii_getsign
 ! 1d15 (a=val, r1=&dest++)
 
@@ -376,6 +411,7 @@ l 14b8 jmpt1407_b8
 l 14bb jmpt1407_bb
 l 14cf jmpt1407_cf
 l 14d7 jmpt1407_d7
+# 14d7 write to CALRAM !!
 l 14e7 jmpt1407_e7
 l 1484 jmpt1407_84
 l 147b jmpt1407_7b
@@ -416,15 +452,9 @@ l 1a4c _cal_toggle0
 ! 0B0C loop (r2) times
 ! 0C9B 0x45[2i + 0] = r0[i + 0]
 ! 0CA0 0x45[2i + 1], r0[i + 1] >> 4
-! 0CAC write full entry
-! 0D53 entry 0x11
-! 0D58 write full entry
-! 0D9B 0x44[0..7]=0
 ! 103B clear iRAM
 ! 1040 write 0xFF to iRAM
 ! 1049 test iRAM[idx]==0xFF
-
-! 114e tbl read @ 1300[]
 
 ! 14D9 calRAM_CE
 
@@ -477,7 +507,17 @@ b 1169-1177
 l 1177 keyjmp_shifted
 b 1176-1184
 
-l 1306 tbl_1306
+# 1306 GPIB RXalpha table; tbl[0] = 'A'
+# 1306 if 0 : invalid. Other values are copied to iRAM[2A];
+# 1306 bit 6 (0x40) causes to clear iRAM[27].bit7 and do GPIB_jmp1
+# 1306 value & 0x1F gives offset into GPIBjmp_1407[] !
+#
+# 1306 first digits: () = illegal
+# 1306 (A) B C D	E F (G) H
+# 1306 (IJ) K (L)	M N (OP)
+# 1306 (Q) R S T	(UV) W X
+# 1306 (Y) Z
+l 1306 GPIB_alphatbl
 b 1306-131f
 
 l 1320 tbl_keys
@@ -495,7 +535,10 @@ l 13f2 ascii_99999
 ! 13f2 see movp with 0xf2
 b 13f2-13fa
 
-l 1407 jmptable_1407
+# 1407 GPIB RX actions.
+# 1407 entries 0-9 are for digits ?
+# 1407 other entries obtained from GPIB_alphatbl
+l 1407 GPIBjmp_1407
 ! 1407 looks like GPIB actions
 b 1407-1418
 
