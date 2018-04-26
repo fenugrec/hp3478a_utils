@@ -52,13 +52,7 @@ class Decoder(srd.Decoder):
     )
 
     annotations = (
-        ('addr', 'Address'),
-        ('data', 'Data'),
-    )
-
-    annotation_rows = (
-        ('addr', 'Address', (0,)),
-        ('data', 'Data', (1,)),
+        ('addr:byte', 'Address:Data'),
     )
 
     def __init__(self):
@@ -86,21 +80,24 @@ class Decoder(srd.Decoder):
         self.addr_s = self.samplenum
 
     def ale_rise(self):
-        if self.started:
+        #if self.started:
+        if 0:
             self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['A 0x%04X' % self.addr]])
 
     def newdata(self, pins):
-        # falling edge on PSEN : get data
+        # edge on PSEN : get data
         tempdata = 0
 
         for i in range(8):
             tempdata |= pins[i] << i
         self.data = tempdata
         self.data_s = self.samplenum
+        if self.started:
+            self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['%04X:' % self.addr + '%02X' % self.data]])
 
     def psen_fall(self):
-        if self.started:
-            self.put(self.data_s, self.samplenum, self.out_ann, [1, ['D 0x%02X' % self.data]])
+        pass
+
 
     def decode(self):
         # Sample address on the falling ALE edge;
