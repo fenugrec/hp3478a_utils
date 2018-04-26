@@ -13,6 +13,7 @@
 
 #include <ctype.h>	//toupper
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -109,6 +110,7 @@ void close_dump(struct dumpfile *dpf) {
 static void extract_romdata(FILE *ifile, FILE *ofile, unsigned size) {
 	struct dumpfile *dpf;
 	u8 *rom;
+	bool *found;	//array of flags to keep track of which locations have been filled.
 
 	u32 cur;
 	unsigned count = 0;	//how many bytes were captured
@@ -119,6 +121,13 @@ static void extract_romdata(FILE *ifile, FILE *ofile, unsigned size) {
 	rom = malloc(size);
 	if (!rom) {
 		printf("malloc choke\n");
+		close_dump(dpf);
+		return;
+	}
+	found = calloc(sizeof(bool), size);
+		if (!found) {
+		printf("calloc choke\n");
+		free(rom);
 		close_dump(dpf);
 		return;
 	}
@@ -136,24 +145,40 @@ static void extract_romdata(FILE *ifile, FILE *ofile, unsigned size) {
 					(unsigned) addr, (unsigned long) cur);
 			break;
 		}
-		//check if ROM already is non-empty and different : problem !
-		if ((rom[addr] != 0xFF) && (rom[addr] != data)) {
-			printf("data collision @ %04X: had %02X,got %02X\n",
-					(unsigned) addr, (unsigned) rom[addr], (unsigned) data);
+		//unexplored address ?
+		if (!(found[addr])) {
+			rom[addr] = data;
+			found[addr] = 1;
+			count++;
 			continue;
 		}
-		rom[addr] = data;
-		count++;
+		if (rom[addr] != data) {
+			// ROM already is non-empty and different : problem !
+			printf("data collision @ addr 0x%04X (input:0x%X): had %02X,got %02X\n",
+					(unsigned) addr, (unsigned) cur, (unsigned) rom[addr], (unsigned) data);
+			continue;
+		}
 	}
 
 	if (count != size) {
-		printf("didn't get whole ROM ? got %X, wanted %X\n", count, (unsigned) size);
+		printf("didn't get whole ROM ? got 0x%X, wanted 0x%X\n", count, (unsigned) size);
+	}
+	count = 0;
+	for (cur = 0; cur < size; cur++) {
+		if (!found[cur]) {
+			printf("ROM hole at 0x%04X\n", cur);
+			count++;
+		}
+	}
+	if (count) {
+		printf("Total : 0x%X holes\n", count);
 	}
 
 	if (fwrite(rom, 1, size, ofile) != size) {
 		printf("fwrite problem\n");
 	}
 
+	free(found);
 	close_dump(dpf);
 	free(rom);
 	return;
