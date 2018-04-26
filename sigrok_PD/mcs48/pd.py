@@ -17,9 +17,14 @@
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 ##
 
+## Note
+##
+##
 ## TODO
 ## - giving channel #s instead of names to self.wait() is completely retarded.
-## - annotate on span between ALE an PSEN edges
+## - make A12 optional; it's here because of an instrument (HP3478A) that
+## drives a generic IO pin to access 8kB of ROM; the MCS48 only has
+## a 4kB address space.
 
 
 import sigrokdecode as srd
