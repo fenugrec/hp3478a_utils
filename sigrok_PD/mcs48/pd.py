@@ -79,11 +79,6 @@ class Decoder(srd.Decoder):
         self.addr = tempaddr
         self.addr_s = self.samplenum
 
-    def ale_rise(self):
-        #if self.started:
-        if 0:
-            self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['A 0x%04X' % self.addr]])
-
     def newdata(self, pins):
         # edge on PSEN : get data
         tempdata = 0
@@ -95,23 +90,16 @@ class Decoder(srd.Decoder):
         if self.started:
             self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['%04X:' % self.addr + '%02X' % self.data]])
 
-    def psen_fall(self):
-        pass
-
 
     def decode(self):
         # Sample address on the falling ALE edge;
         # Save data on falling edge of PSEN.
 
         while True:
-            pins = self.wait([{13: 'f'}, {13: 'r'}, {14: 'r'}, {14: 'f'}])
+            pins = self.wait([{13: 'f'},{14: 'r'}])
 
             # Handle those conditions (one or more) that matched this time.
             if self.matched[0]:
                 self.newaddr(pins[0:])
             if self.matched[1]:
-                self.ale_rise()
-            if self.matched[2]:
                 self.newdata(pins[0:])
-            if self.matched[3]:
-                self.psen_fall()
