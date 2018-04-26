@@ -98,7 +98,7 @@ class Decoder(srd.Decoder):
         self.data = tempdata
         self.data_s = self.samplenum
 
-    def psen_rise(self):
+    def psen_fall(self):
         if self.started:
             self.put(self.data_s, self.samplenum, self.out_ann, [1, ['D 0x%02X' % self.data]])
 
@@ -107,7 +107,7 @@ class Decoder(srd.Decoder):
         # Save data on falling edge of PSEN.
 
         while True:
-            pins = self.wait([{13: 'f'}, {13: 'r'}, {14: 'f'}, {14: 'r'}])
+            pins = self.wait([{13: 'f'}, {13: 'r'}, {14: 'r'}, {14: 'f'}])
 
             # Handle those conditions (one or more) that matched this time.
             if self.matched[0]:
@@ -117,4 +117,4 @@ class Decoder(srd.Decoder):
             if self.matched[2]:
                 self.newdata(pins[0:])
             if self.matched[3]:
-                self.psen_rise()
+                self.psen_fall()
