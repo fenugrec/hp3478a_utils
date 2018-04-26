@@ -1,0 +1,16 @@
+A bunch of tools to dump ROM without desoldering the IC.
+Using sigrok, we capture the CPU data lines D0-D7, the upper address bits A8-A12,
+and two control lines ALE and PSEN.
+
+During power-on the unit runs a checksum over the entire ROM; this is the best moment
+to capture as we're sure to see every ROM location accessed at least once.
+
+Then use the "mcs48" packet decoder thus (assuming during capture the channels were properly name).
+
+
+sigrok-cli -i test1.sr -P mcs48:d0=D0:d1=D1:d2=D2:d3=D3:d4=D4:d5=D5:d6=D6:d7=D7:a8=A8:a9=A9:a10=A10:a11=A11:a12=A12:ale=ALE:psen=PSEN -B mcs48 > test.bin
+
+test.bin now contains 3-byte chunks formatted as 2 bytes for the address (big-endian) then
+1 byte of data.
+
+Then rebuild_rom.c can be used to remap those accesses and produce the actual ROM dump.
