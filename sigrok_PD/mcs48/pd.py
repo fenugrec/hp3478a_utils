@@ -52,7 +52,11 @@ class Decoder(srd.Decoder):
     )
 
     annotations = (
-        ('addr:byte', 'Address:Data'),
+        ('romdata', 'Address:Data'),
+    )
+
+    binary = (
+        ('romdata', 'AAAA:DD'),
     )
 
     def __init__(self):
@@ -66,6 +70,7 @@ class Decoder(srd.Decoder):
 
     def start(self):
         self.out_ann = self.register(srd.OUTPUT_ANN)
+        self.out_bin = self.register(srd.OUTPUT_BINARY)
 
 
     def newaddr(self, pins):
@@ -89,6 +94,7 @@ class Decoder(srd.Decoder):
         self.data_s = self.samplenum
         if self.started:
             self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['%04X:' % self.addr + '%02X' % self.data]])
+            self.put(self.addr_s, self.samplenum, self.out_bin, [0, bytes([(self.addr >> 8) & 0xFF, self.addr & 0xFF, self.data])])
 
 
     def decode(self):
