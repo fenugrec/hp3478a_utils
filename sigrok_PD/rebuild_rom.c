@@ -12,6 +12,7 @@
  */
 
 #include <ctype.h>	//toupper
+#include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -19,7 +20,7 @@
 
 #include <getopt.h>
 
-#include "..\stypes.h"
+#include "../stypes.h"
 
 
 #define DUMP_MAXSIZE	1*1024*1024UL	//arbitrary
