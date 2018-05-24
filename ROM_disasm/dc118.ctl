@@ -92,7 +92,14 @@ l 10aa syserr_a
 l 10a9 syserr_r2
 
 l 055c isol_synctx?
+l 057c isol_tx_2B
+# 057c r1 = bytecnt
+l 0586 isol_tx8loop
+# 059f stopbit?
 l 0600 isol_syncrx?
+# 0600 rx 4 bytes to iRAM[2D]
+l 061a isol_rx_4B
+l 061d isol_rx8loop
 ! 0651 read keypad (useless?)
 ! 0659 get DIPswitch (useless?)
 l 0800 set_A12_ret
@@ -248,19 +255,22 @@ L 19AF GPIB_getSPSTAT?
 ! 12C9 iRAM[2A]
 ! 12DF a = GPIB_alphatbl[a] (tbl @ 1306)
 l 12e9 do_GPIBjmp
-! 12E9 (a = iRAM[2A],r7 = DIN)
+# 12E9 r0=2A; r7 = DIN
 l 12f2 GPIB_ISR1_DEC
 l 12f4 GPIB_ISR1_GET
+l 132F GPIB_BOh
 ! 134F GPIB_CS
 ! 135E ascii_digitstuff
 ! 1362  '.'
 ! 13A1 AUXMODE=06 sendEOI
 ! 13AB DOUT = data
+# 13bf sketch : we got here from "jz	X13bf",
+# 13bf so the jz below is unconditional !
 l 1400 GPIB_jmp1
 ! 1400 i : r0=&val (iRAM[24] always?)
 l 1454 jmp_rxbad
 ! 1491 SPSTATUS
-! 14c7 SPSTATUS
+! 14c7 read CAL!
 ! 14E1 GPIB_release
 ! 14E3 GPIB_CS
 l 155c GPIB_init
@@ -301,6 +311,7 @@ l 155c GPIB_init
 ! 1E20 GPIB_CS
 ! 1E26 AUXMODE = TRIG
 ! 1E2A a = ADDRSTAT?
+# 1e38 sketch again : orl forces NZ, so this is unconditional !
 ! 1F05 ret to 16a5 !
 ! 1F8E r7 = rxbyte
 
@@ -431,7 +442,7 @@ l 14a6 jmpt1407_a6
 l 14b2 jmpt1407_b2
 l 14b6 jmpt1407_b6
 l 14b8 jmpt1407_b8
-l 14bb jmpt1407_bb
+l 14bb GPIBjmp_bb_Wread
 l 14cf jmpt1407_cf
 l 14d7 GPIBjmp_d7_Xwrite
 # 14d7 write to CALRAM !!
@@ -450,6 +461,7 @@ l 1800 clr_A12_ret
 l 1a4c _cal_toggle0
 ! 1a4c toggle calram[0] and ret a
 ! 1a4e SRAM_CS
+# 1a67 61=AD LINK FAIL
 
 
 ;************* general comments
@@ -605,6 +617,8 @@ l 1b33 tbl_1b33
 # 1b33 fits with func selection (1=DCV, 2=ACV, etc.)
 b 1b33-1b39
 
+i 1e3e
+
 l 1f61 tbl_prefixes
 # 1f61 M/K/G etc. Some weirdness
 # 1f61 " \0MFMG E"
@@ -636,6 +650,7 @@ m 1 1375
 m 1 1377
 m 1 137f
 m 1 1382
+m 0 13c4	;sketch
 m 1 1541
 m 0 18e3
 m 0 19bd

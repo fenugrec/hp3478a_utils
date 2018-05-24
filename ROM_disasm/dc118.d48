@@ -1,6 +1,6 @@
 ;
-;  D48 V3.5.0 8048 Disassembly of dc118.bin
-;  2018/03/29 18:26
+;  D48 V3.5.0 8048 Disassembly of ..\..\dc118.bin
+;  2018/05/23 22:35
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -743,29 +743,33 @@ X0573:	djnz	r1,X0577	; 0573 - e9 77	iw
 X0577:	jt1	X0573		; 0577 - 56 73	Vs
 	mov	r1,#0x2		; 0579 - b9 02	9.
 	dis	tcnti		; 057b - 35	5
-X057c:	inc	r0		; 057c - 18	.
+; r1 = bytecnt
+isol_tx_2B:
+	inc	r0		; 057c - 18	.
 	mov	a,@r0		; 057d - f0	p
 	orl	p2,#0x80	; 057e - 8a 80	..
 	mov	r2,#0x8		; 0580 - ba 08	:.
 	jnt1	X0588		; 0582 - 46 88	F.
 	jmp	X062d		; 0584 - c4 2d	D-
 ;
-X0586:	nop			; 0586 - 00	.
+isol_tx8loop:
+	nop			; 0586 - 00	.
 	rl	a		; 0587 - e7	g
 X0588:	jb7	X0592		; 0588 - f2 92	r.
 	anl	p2,#0x7f	; 058a - 9a 7f	..
-	djnz	r2,X0586	; 058c - ea 86	j.
-	djnz	r1,X057c	; 058e - e9 7c	i|
+	djnz	r2,isol_tx8loop	; 058c - ea 86	j.
+	djnz	r1,isol_tx_2B	; 058e - e9 7c	i|
 	jmp	X059b		; 0590 - a4 9b	$.
 ;
 X0592:	orl	p2,#0x80	; 0592 - 8a 80	..
-	djnz	r2,X0586	; 0594 - ea 86	j.
-	djnz	r1,X057c	; 0596 - e9 7c	i|
+	djnz	r2,isol_tx8loop	; 0594 - ea 86	j.
+	djnz	r1,isol_tx_2B	; 0596 - e9 7c	i|
 	jmp	X059b		; 0598 - a4 9b	$.
 ;
 X059a:	cpl	f1		; 059a - b5	5
 X059b:	anl	p2,#0x7f	; 059b - 9a 7f	..
 	mov	r2,#0x2		; 059d - ba 02	:.
+; stopbit?
 X059f:	djnz	r2,X059f	; 059f - ea 9f	j.
 	orl	p2,#0x80	; 05a1 - 8a 80	..
 	jf1	X05ab		; 05a3 - 76 ab	v+
@@ -785,6 +789,7 @@ X05ab:	en	tcnti		; 05ab - 25	%
 retr_05b7:
 	retr			; 05b7 - 93	.
 ;
+; rx 4 bytes to iRAM[2D]
 	org	0x600
 ;
 isol_syncrx?:
@@ -804,9 +809,11 @@ X0610:	jt1	X0616		; 0610 - 56 16	V.
 ;
 X0616:	mov	r0,#0x2d	; 0616 - b8 2d	8-
 	mov	r1,#0x4		; 0618 - b9 04	9.
-X061a:	mov	r2,#0x8		; 061a - ba 08	:.
+isol_rx_4B:
+	mov	r2,#0x8		; 061a - ba 08	:.
 	clr	a		; 061c - 27	'
-X061d:	jt1	X0622		; 061d - 56 22	V"
+isol_rx8loop:
+	jt1	X0622		; 061d - 56 22	V"
 	rl	a		; 061f - e7	g
 	jmp	X0625		; 0620 - c4 25	D%
 ;
@@ -814,10 +821,10 @@ X0622:	rl	a		; 0622 - e7	g
 	inc	a		; 0623 - 17	.
 	nop			; 0624 - 00	.
 X0625:	mov	@r0,a		; 0625 - a0	 
-	djnz	r2,X061d	; 0626 - ea 1d	j.
+	djnz	r2,isol_rx8loop	; 0626 - ea 1d	j.
 	jnt1	X0636		; 0628 - 46 36	F6
 	inc	r0		; 062a - 18	.
-	djnz	r1,X061a	; 062b - e9 1a	i.
+	djnz	r1,isol_rx_4B	; 062b - e9 1a	i.
 X062d:	orl	p2,#0x80	; 062d - 8a 80	..
 	call	X05ab		; 062f - b4 ab	4+
 	call	isol_dly	; 0631 - 34 06	4.
@@ -2446,15 +2453,16 @@ X12dc:	mov	a,r6		; 12dc - fe	~
 	jb6	X12c4		; 12e5 - d2 c4	RD
 	jmp	GPIB_reparse_ISR1; 12e7 - 44 8f	D.
 ;
+; r0=2A; r7 = DIN
 do_GPIBjmp:
-	jb5	X12ed		; 12e9 - b2 ed	2m	; (a = iRAM[2A],r7 = DIN)
+	jb5	X12ed		; 12e9 - b2 ed	2m
 	jmp	GPIB_jmp1	; 12eb - 84 00	..
 ;
 X12ed:	sel	mb1		; 12ed - f5	u
 	jmp	X1f8e		; 12ee - e4 8e	d.
 ;
 GPIB_ISR1_BO:
-	jmp	X132f		; 12f0 - 64 2f	d/
+	jmp	GPIB_BOh	; 12f0 - 64 2f	d/
 ;
 GPIB_ISR1_DEC:
 	jmp	X1026		; 12f2 - 04 26	.&
@@ -2495,7 +2503,8 @@ GPIB_alphatbl:
 tbl_keys:	db	0xde,0xdd,0xdb,0xd7,0xee,0xed,0xeb,0xbe	; 1320 ^][Wnmk>
 	db	0xbd,0xbb,0xb7,0x7e,0x7d,0x7b,0x0	; 1328 =;7~}{.
 ;
-X132f:	mov	r1,#0x27	; 132f - b9 27	9'
+GPIB_BOh:
+	mov	r1,#0x27	; 132f - b9 27	9'
 	mov	a,@r1		; 1331 - f1	q
 	jb6	X1395		; 1332 - d2 95	R.
 	jb7	GPIB_sendreading?; 1334 - f2 39	r9
@@ -2590,10 +2599,12 @@ X13b6:	mov	a,r0		; 13b6 - f8	x
 	inc	r1		; 13bc - 19	.
 	jmp	X13b6		; 13bd - 64 b6	d6
 ;
+; sketch : we got here from "jz	X13bf",
+; so the jz below is unconditional !
 X13bf:	mov	r6,#0x9		; 13bf - be 09	>.
 	sel	mb1		; 13c1 - f5	u
 	jz	X1379		; 13c2 - c6 79	Fy
-X13c4:	call	X1db5		; 13c4 - b4 b5	45
+X13c4:	call	X15b5		; 13c4 - b4 b5	45
 	mov	a,r6		; 13c6 - fe	~
 	jnz	X13ca		; 13c7 - 96 ca	.J
 	inc	a		; 13c9 - 17	.
@@ -2776,7 +2787,7 @@ jmpt1407_b8:
 	sel	mb1		; 14b8 - f5	u
 	jmp	X1e00		; 14b9 - c4 00	D.
 ;
-jmpt1407_bb:
+GPIBjmp_bb_Wread:
 	mov	a,r7		; 14bb - ff	.
 	mov	r6,a		; 14bc - ae	.
 	mov	r2,#0x7f	; 14bd - ba 7f	:.
@@ -2785,7 +2796,7 @@ jmpt1407_bb:
 	anl	p2,#0xf7	; 14c3 - 9a f7	.w	; calRAM_CE
 	mov	a,r6		; 14c5 - fe	~
 	mov	r0,a		; 14c6 - a8	(
-	movx	a,@r0		; 14c7 - 80	.	; SPSTATUS
+	movx	a,@r0		; 14c7 - 80	.	; read CAL!
 	anl	a,#0xf		; 14c8 - 53 0f	S.
 	add	a,#0x40		; 14ca - 03 40	.@
 	mov	@r1,a		; 14cc - a1	!
@@ -3797,6 +3808,7 @@ X1a5d:	mov	r0,#0x51	; 1a5d - b8 51	8Q
 	mov	r0,#0x53	; 1a61 - b8 53	8S
 	mov	@r0,#0xff	; 1a63 - b0 ff	0.
 	mov	r2,#0x61	; 1a65 - ba 61	:a
+; 61=AD LINK FAIL
 	sel	mb0		; 1a67 - e5	e
 	call	X10b9		; 1a68 - 14 b9	.9
 	dis	tcnti		; 1a6a - 35	5
@@ -3951,10 +3963,6 @@ X1d39:	sel	mb0		; 1d39 - e5	e
 X1d3e:	mov	r7,#0xf		; 1d3e - bf 0f	?.
 	jmp	X1d39		; 1d40 - a4 39	$9
 ;
-	org	0x1db5
-;
-X1db5:	mov	a,r7		; 1db5 - ff	.
-;
 	org	0x1e00
 ;
 X1e00:	sel	mb0		; 1e00 - e5	e
@@ -3996,10 +4004,10 @@ X1e30:	call	GPIB_getSPSTAT?	; 1e30 - 34 af	4/
 	mov	@r0,a		; 1e34 - a0	 
 	clr	c		; 1e35 - 97	.
 	jnc	X1e29		; 1e36 - e6 29	f)
+; sketch again : orl forces NZ, so this is unconditional !
 X1e38:	call	GPIB_getSPSTAT?	; 1e38 - 34 af	4/
 	orl	a,#0x4		; 1e3a - 43 04	C.
 	jnz	X1e19		; 1e3c - 96 19	..
-	mov	a,r7		; 1e3e - ff	.
 ;
 	org	0x1efc
 ;
