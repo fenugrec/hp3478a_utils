@@ -20,3 +20,8 @@ The resulting ROM has some inconsistencies due to triggering on PSEN rising edge
 A8-A12 are not latched, so on a return from an interrupt where A8-A12 change just before +PSEN,
 the data on the bus changes (the ROM IC updates it as its address changes).
 To fix this in the PD would require to read the address pins on the sample just before the PSEN rising edge. I see no way of doing this efficiently.
+
+
+**** isolated serial comms
+Also included is a capture of the bidirection, isolated interface between the main CPU and analog (floating) CPU.
+Weird sync + start + stopbit conventions, se RE notes
