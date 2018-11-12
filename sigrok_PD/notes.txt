@@ -1,3 +1,5 @@
+**** important : the protocol decoder in mcs48 was merged in sigrok, and is therefore no longer maintained !!! ****
+
 A bunch of tools to dump ROM without desoldering the IC.
 Using sigrok, we capture the CPU data lines D0-D7, the upper address bits A8-A12,
 and two control lines ALE and PSEN.

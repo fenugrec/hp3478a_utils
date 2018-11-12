@@ -65,10 +65,9 @@ class Decoder(srd.Decoder):
     )
 
     def __init__(self):
-        self.addr = 0
-        self.addr_s = 0
+        self.addr_latch = 0 #lower 8 bits
+        self.addr_s = 0 #ALE edge position
         self.data = 0
-        self.data_s = 0
 
         #flag to make sure we get an ALE pulse first
         self.started = 0
@@ -83,23 +82,27 @@ class Decoder(srd.Decoder):
         self.started = 1
         tempaddr = 0
 
-        for i in range(13):
+        for i in range(8):
             tempaddr |= pins[i] << i
 
-        self.addr = tempaddr
+        self.addr_latch = tempaddr
         self.addr_s = self.samplenum
 
     def newdata(self, pins):
         # edge on PSEN : get data
         tempdata = 0
+        addr = self.addr_latch
 
         for i in range(8):
             tempdata |= pins[i] << i
+        for i in range(8,13):
+            #high order bits were not latched !
+            addr |= pins[i] << i
+
         self.data = tempdata
-        self.data_s = self.samplenum
         if self.started:
-            self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['%04X:' % self.addr + '%02X' % self.data]])
-            self.put(self.addr_s, self.samplenum, self.out_bin, [0, bytes([(self.addr >> 8) & 0xFF, self.addr & 0xFF, self.data])])
+            self.put(self.addr_s, self.samplenum, self.out_ann, [0, ['%04X:' % addr + '%02X' % self.data]])
+            self.put(self.addr_s, self.samplenum, self.out_bin, [0, bytes([(addr >> 8) & 0xFF, addr & 0xFF, self.data])])
 
 
     def decode(self):
