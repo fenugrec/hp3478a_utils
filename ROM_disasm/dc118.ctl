@@ -34,6 +34,11 @@
 L 0   reset
 L 3   intvec
 L 7   tcvec
+! 7  tcvec and alt_tcvec are identical
+! 0c push a
+! die
+! 021 reload WDTcnt
+! 024 pop a
 C 0
 C 3
 C 7
@@ -46,6 +51,7 @@ C 7
 L 1000   alt_reset
 L 1003   alt_intvec
 L 1007   alt_tcvec
+! 1007  tcvec and alt_tcvec are identical
 C 1000
 C 1003
 C 1007
@@ -91,17 +97,19 @@ l 1070 init_idata
 l 10aa syserr_a
 l 10a9 syserr_r2
 
-l 055c isol_synctx?
-l 057c isol_tx_2B
-# 057c r1 = bytecnt
-l 0586 isol_tx8loop
-# 059f stopbit?
-l 0600 isol_syncrx?
-# 0600 rx 4 bytes to iRAM[2D]
-l 061a isol_rx_4B
-l 061d isol_rx8loop
+l 055c isol_synctx
+l 0562 isol_synctx2
+! 055c sends 2 bytes from iRAM[0x3F?], MSB first, clr F1 if ok
+! 0569 set P27, wait for T=1
+! 0577 clr P27, wait for T=0
+! 059b do_stopbit
+l 0600 isol_syncrx
+! 0600 writes 4 bytes to iRAM[0x2D]
+l 061A rx_4byteloop
+l 061D rx_8bitloop
 ! 0651 read keypad (useless?)
 ! 0659 get DIPswitch (useless?)
+l 06bb seterr_AD_LINK
 l 0800 set_A12_ret
 ! 0800 set A12; call 1807, then ret to orig (block0)
 l 0866 kp_call_a12
@@ -171,6 +179,7 @@ l 15a8 func_change
 ;************* GPIB stuff
 L 00BA GPIB_trig
 l 0400 GPIB_SPstuff
+L 1026 GPIB_DevClr
 l 10cb GPIB_SPstat_r7
 l 1200 GPIB_intparsage
 ! 1265 range check on received data : alphanum, digits, and \r\n
@@ -255,7 +264,7 @@ L 19AF GPIB_getSPSTAT?
 ! 12C9 iRAM[2A]
 ! 12DF a = GPIB_alphatbl[a] (tbl @ 1306)
 l 12e9 do_GPIBjmp
-# 12E9 r0=2A; r7 = DIN
+! 12E9 (a = iRAM[2A],r7 = DIN)
 l 12f2 GPIB_ISR1_DEC
 l 12f4 GPIB_ISR1_GET
 l 132F GPIB_BOh
@@ -301,9 +310,6 @@ l 155c GPIB_init
 ! 1654 get DIP addr again
 ! 1656 keep 50/60Hz bit
 ! 17e9 get iRAM[2A], if < 0x3F then ret a |= 0x40 => check MTA/MLA ?
-! 1933 GPIB_CS
-! 199B GPIB_CS
-! 199F GPIB_release
 ! 19B1 SPSTAT
 ! 19B3 Carry = SRQS
 ! 19b9 get ADRS
@@ -344,7 +350,7 @@ l 1724 disp_print_r2
 l 17c5 disp_putc
 ! 17c5 write to dispbuf : i: a=val, r1=&dest,
 l 1906 disp_setpwo
-! 1906 if (!f1) : tog sync and set pwo
+! 1906 if (!f1) : clr pwo then set pwo, sync=0
 l 1917 disp_init?
 l 1937 disp_writeannuns?
 l 194a disp_write12h
@@ -413,7 +419,10 @@ L 1949 retr_1949
 ;************* locs with low confidence
 l 0106 isol_dly
 ! 0106 approx 10-15ms ? rough calc
+! 0413 do math on raw ADC val ?
 
+l 0643 reset_debug
+! 0643 init code for reset with A12=0
 L 0f28 cal58_sub2C
 ! 0f28 cal58 -= cal2C ? not sure
 l 1185 keyjmp_85_modechange
