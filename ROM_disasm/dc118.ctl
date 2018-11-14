@@ -75,8 +75,9 @@ l 0506 readcal_r7_sign?
 ! 050d if (a > 8) ?
 l 054e readcal_bot_r6
 ! 067c test calRAM read/write ?
-l 0687 CAL_test
-l 16e9 bridge_CAL_test
+l 0687 selftest
+! 0687 does CAL_test(r5=errno), then AD LINK test (r3=errno), AD TEST (r4=errno), 
+l 16e9 bridge_selftest
 # 069f: 0xc5= UNCALIBRATED
 # 06b7: AD TEST FAIL
 # 06bb: AD LINK FAIL
@@ -305,6 +306,7 @@ l 155c GPIB_init
 ! 1628 ADR0 = DIPaddr
 ! 1645 DIP addr > 0x1f
 ! 1647 ADRMODE = tonly
+l 1650 getdip_50hz
 ! 1650 read 50/60Hz switch. GPIB_release
 ! 1652 DIPadd_sel
 ! 1654 get DIP addr again
@@ -326,7 +328,6 @@ l 155c GPIB_init
 L 1600 dip_parse
 ! 160F DIP_sel
 ! 1611 get DIP setting
-! 1650 read 50/60Hz switch
 l 16c0 clr_ram27_bit7
 l 18ad render_reading
 l 18dc pad display with spaces
@@ -349,6 +350,7 @@ l 1708 disp_print1_r2
 l 1724 disp_print_r2
 l 17c5 disp_putc
 ! 17c5 write to dispbuf : i: a=val, r1=&dest,
+! 17d8 putc_samechar
 l 1906 disp_setpwo
 ! 1906 if (!f1) : clr pwo then set pwo, sync=0
 l 1917 disp_init?
