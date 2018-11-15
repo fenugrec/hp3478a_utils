@@ -206,12 +206,35 @@ static void process(u8 *caldata, FILE *o_file) {
 	return;
 }
 
+/** calculate gain correction factor
+ *
+ * based on 5-char gain string
+*/
+static double getgain(const u8 *gstr) {
+	double gain = 1.0;
+	double mult = 0.01;
+	unsigned cur;
+	u8 dig;
+
+	for (cur = 0; cur <= 4; cur += 1) {
+		dig = gstr[cur] & 0x0F;
+		if (dig & 0x08) {
+			// digit is negative, i.e. 0x0C is -4
+			gain -= dig * mult;
+		} else {
+			gain += dig * mult;
+		}
+		mult = mult / 10;
+	}
+	return gain;
+}
+
 /** print out raw data for every cal entry */
 static void dump_entries(const u8 *caldata) {
 	int recindex;
 
 	//header columns
-	printf("entry #\toffset\tgain?\trange\n");
+	printf("entry #\toffset\t(rawgain)\tgain\trange\n");
 	for (recindex = 0; recindex < CAL_ENTRIES; recindex += 1) {
 		//parse every 13-byte entry.
 		const u8 *entrydata = &caldata[(1 + (CAL_ENTRYSIZE * recindex))];
@@ -223,9 +246,10 @@ static void dump_entries(const u8 *caldata) {
 		}
 		printf("\t");
 		for (; idx < CAL_DATASIZE; idx += 1) {
-			//print remaining nibs
+			//print raw gain string
 			printf("%01X", (unsigned) entrydata[idx] & 0x0F);
 		}
+		printf("\t%1.6f", getgain(&entrydata[CAL_OFFSETSIZE]));
 		printf("\t%s\n", calentry_names[recindex]);
 	}
 }
