@@ -1,6 +1,6 @@
 ;
 ;  D48 V3.5.0 8048 Disassembly of ../../rom_dc118.bin
-;  2018/11/14 16:53
+;  2018/11/14 17:35
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -2039,7 +2039,7 @@ syserr_a:
 X10b9:	clr	c		; 10b9 - 97	.
 	call	disp_print1_r2	; 10ba - f4 08	t.
 	sel	mb1		; 10bc - f5	u
-	call	X1868		; 10bd - 14 68	.h
+	call	disp_update	; 10bd - 14 68	.h
 	sel	mb0		; 10bf - e5	e
 retr_10c0:
 	retr			; 10c0 - 93	.
@@ -3406,7 +3406,7 @@ X1833:	call	X1a24		; 1833 - 54 24	T$
 	mov	r0,#0x50	; 1835 - b8 50	8P
 	mov	a,@r0		; 1837 - f0	p
 	inc	@r0		; 1838 - 10	.
-	jz	X1868		; 1839 - c6 68	Fh
+	jz	disp_update	; 1839 - c6 68	Fh
 	clr	c		; 183b - 97	.
 	clr	f1		; 183c - a5	%
 	mov	r0,#0x52	; 183d - b8 52	8R
@@ -3420,27 +3420,30 @@ X1833:	call	X1a24		; 1833 - 54 24	T$
 X1847:	mov	r0,#0x54	; 1847 - b8 54	8T
 	clr	a		; 1849 - 27	'
 	xch	a,@r0		; 184a - 20	 
-	jz	X1852		; 184b - c6 52	FR
+	jz	_loc1852	; 184b - c6 52	FR
 	dec	r0		; 184d - c8	H
 	xrl	a,@r0		; 184e - d0	P
 	mov	@r0,a		; 184f - a0	 
 	jmp	X1854		; 1850 - 04 54	.T
 ;
-X1852:	jnc	X1858		; 1852 - e6 58	fX
+_loc1852:
+	jnc	X1858		; 1852 - e6 58	fX
 X1854:	call	disp_setpwo	; 1854 - 34 06	4.
 	call	disp_writeannuns?; 1856 - 34 37	47
 X1858:	mov	r0,#0x55	; 1858 - b8 55	8U
 	mov	a,@r0		; 185a - f0	p
 	jb6	X1873		; 185b - d2 73	Rs
 	jb7	X187d		; 185d - f2 7d	r}
-	jf1	X1862		; 185f - 76 62	vb
+	jf1	_loc1862	; 185f - 76 62	vb
 	retr			; 1861 - 93	.
 ;
-X1862:	mov	r2,#0x38	; 1862 - ba 38	:8
+_loc1862:
+	mov	r2,#0x38	; 1862 - ba 38	:8
 	call	pulse_dispck_r2	; 1864 - 54 02	T.
-	jmp	X1881		; 1866 - 04 81	..
+	jmp	_clrpwo_ret	; 1866 - 04 81	..
 ;
-X1868:	sel	mb0		; 1868 - e5	e
+disp_update:
+	sel	mb0		; 1868 - e5	e	; udpate display according to flags in iRAM[55]
 	call	getdip_50hz	; 1869 - d4 50	TP
 	sel	mb1		; 186b - f5	u
 	clr	f1		; 186c - a5	%
@@ -3452,10 +3455,11 @@ X1873:	call	disp_setpwo	; 1873 - 34 06	4.
 	mov	r0,#0x55	; 1877 - b8 55	8U
 	mov	a,@r0		; 1879 - f0	p
 	cpl	a		; 187a - 37	7
-	jb7	X1881		; 187b - f2 81	r.
+	jb7	_clrpwo_ret	; 187b - f2 81	r.
 X187d:	call	disp_setpwo	; 187d - 34 06	4.
 	call	disp_write12l	; 187f - 34 5e	4^
-X1881:	call	disp_clrpwo	; 1881 - 34 71	4q
+_clrpwo_ret:
+	call	disp_clrpwo	; 1881 - 34 71	4q
 	mov	r0,#0x55	; 1883 - b8 55	8U
 	mov	a,@r0		; 1885 - f0	p
 	anl	a,#0x3f		; 1886 - 53 3f	S?
@@ -3784,7 +3788,7 @@ X1a3e:	mov	r2,#0xb8	; 1a3e - ba b8	:8
 	sel	mb0		; 1a43 - e5	e
 	call	disp_print1_r2	; 1a44 - f4 08	t.
 	sel	mb1		; 1a46 - f5	u
-	call	X1868		; 1a47 - 14 68	.h
+	call	disp_update	; 1a47 - 14 68	.h
 	sel	mb0		; 1a49 - e5	e
 	jmp	X108c		; 1a4a - 04 8c	..
 ;
@@ -3839,7 +3843,7 @@ X1a8d:	clr	c		; 1a8d - 97	.
 	sel	mb0		; 1a8e - e5	e
 X1a8f:	call	X171e		; 1a8f - f4 1e	t.
 	sel	mb1		; 1a91 - f5	u
-	call	X1868		; 1a92 - 14 68	.h
+	call	disp_update	; 1a92 - 14 68	.h
 	orl	p1,#0xff	; 1a94 - 89 ff	..
 	anl	p1,#0x0		; 1a96 - 99 00	..
 	ret			; 1a98 - 83	.
@@ -4178,7 +4182,7 @@ X1fe6:	mov	r0,#0x51	; 1fe6 - b8 51	8Q
 	mov	@r0,a		; 1fe9 - a0	 
 	mov	r0,#0x53	; 1fea - b8 53	8S
 	mov	@r0,a		; 1fec - a0	 
-	call	X1868		; 1fed - 14 68	.h
+	call	disp_update	; 1fed - 14 68	.h
 	mov	a,#0xcd		; 1fef - 23 cd	#M
 	outl	p2,a		; 1ff1 - 3a	:
 	jmp	X1fdf		; 1ff2 - e4 df	d_

@@ -66,12 +66,12 @@ L 0200 check_calentry
 ! 0200 i: a=calid. verify checksum of entry
 l 0204 check_calentr_a
 ! 0204 verify checksum at a=addr
-! 043b reassemble offset[6] from CALRAM
+! 043b reassemble offset[6] from CALRAM into iram[32]
 # 04ad parse cal gain constant
-# 0506 this section seems to parse the cal (offset?) constant,
+# 0506 this section seems to parse the cal constant pointed by r7;
 # 0506 if the first digit is 8 or 9, the # is negative ?
 l 0506 readcal_r7_sign?
-! 0506 (movx = from CALRAM)
+! 0506 i: r7=cal_addr, r4=sizeof(val?),r6=?. (movx setup for CALRAM)
 ! 050d if (a > 8) ?
 l 054e readcal_bot_r6
 ! 067c test calRAM read/write ?
@@ -348,9 +348,17 @@ l 1602 print_GPIBaddr
 l 1708 disp_print1_r2
 ! 1708 print predefined strings from table, to disp buf
 l 1724 disp_print_r2
+l 172d disp_markchanged
+! 172d set "Hnib_changed" and "Lnib_changed" flags in [55]
 l 17c5 disp_putc
-! 17c5 write to dispbuf : i: a=val, r1=&dest,
-! 17d8 putc_samechar
+! 17c5 write to dispbuf : i: a=char, r1=&dest, Cy="bool charonly". Set f0,f1 if H/L nib changed
+l 17ce disp_putc_allbits
+! 17d8 _samechar
+l 1852 _loc1852
+l 1862 _loc1862
+l 1868 disp_update
+! 1868 udpate display according to flags in iRAM[55]
+l 1881 _clrpwo_ret
 l 1906 disp_setpwo
 ! 1906 if (!f1) : clr pwo then set pwo, sync=0
 l 1917 disp_init?
@@ -421,7 +429,12 @@ L 1949 retr_1949
 ;************* locs with low confidence
 l 0106 isol_dly
 ! 0106 approx 10-15ms ? rough calc
-! 0413 do math on raw ADC val ?
+l 0413 adc_math
+! 0413 do math on raw ADC val
+! 0417 kind of "sign extend"; iram[2C] is not part of the adc reading
+! 0459 why are we adding 50 ?
+l 0459 uncal_skipoffs
+l 04ce rd_spstat_tbl
 
 l 0643 reset_debug
 ! 0643 init code for reset with A12=0
@@ -464,11 +477,11 @@ l 146d jmpt1407_6d
 l 147d jmpt1407_7d
 
 l 15bb sub_15bb
-! 17d8 j if not changed; else clr f0
 l 17da cal_toggle0
 ! 17da (toggle calram[0] and ret a)
 l 17e9 sub_17E9
 l 1800 clr_A12_ret
+! 1a24 blink last digit point ?
 l 1a4c _cal_toggle0
 ! 1a4c toggle calram[0] and ret a
 ! 1a4e SRAM_CS
@@ -486,7 +499,9 @@ l 1a4c _cal_toggle0
 
 ! 0106 clr P27 : isol_out
 ! 0201 idcal = stored @ RAM0[3F]
-! 0451 cal2C[] += cal36[] ?
+! 0451 ADC val @ cal2C[] += cal32[]
+! 0459 here, cal2C[] contains a 10digit BCB number == "adc + cal_offs"
+! 0492 copy cal2C[] to iram[33][4]
 ! 063C set P27 (isol_dout)
 ! 0644 clr P27 (isol_dout)
 ! 0678 calRAM_CE
@@ -596,7 +611,7 @@ b 1407-1418
 
 # 173A string tables !
 # 173A bit flags : 0x80 = ?, 0x40 : decimal point !
-# 1731 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
+# 173A 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
 # 0x40-0x5A ('A'-'Z') permitted too ? => show with decimal point !
 # 0x20 : space ( + 0)
 
