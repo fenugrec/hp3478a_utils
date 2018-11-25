@@ -1,6 +1,6 @@
 ;
-;  D48 V3.5.0 8048 Disassembly of ../../rom_dc118.bin
-;  2018/11/14 17:35
+;  D48 V3.5.0 8048 Disassembly of dc118.bin
+;  2018/11/25 16:02
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -149,7 +149,7 @@ GPIB_trig:
 	mov	@r0,a		; 00cb - a0	 
 	mov	r0,#0x3f	; 00cc - b8 3f	8?
 	mov	a,@r0		; 00ce - f0	p
-	mov	r0,#0x2c	; 00cf - b8 2c	8,
+	mov	r0,#0x2c	; 00cf - b8 2c	8,	; copy iRAM[2C] => iRAM[39]
 	mov	r1,#0x38	; 00d1 - b9 38	98
 	mov	@r1,a		; 00d3 - a1	!
 	mov	r2,#0x5		; 00d4 - ba 05	:.
@@ -376,7 +376,7 @@ X026a:	mov	r0,#0x40	; 026a - b8 40	8@
 	orl	a,#0x2		; 0283 - 43 02	C.
 	mov	@r0,a		; 0285 - a0	 
 	mov	r7,#0xde	; 0286 - bf de	?^
-	call	X04ce		; 0288 - 94 ce	.N
+	call	rd_spstat_tbl	; 0288 - 94 ce	.N
 	jmp	X0250		; 028a - 44 50	DP
 ;
 X028c:	mov	a,@r0		; 028c - f0	p
@@ -395,17 +395,18 @@ X0292:	call	isol_synctx	; 0292 - b4 5c	4\
 	mov	r0,#0x40	; 02a1 - b8 40	8@
 	mov	a,@r0		; 02a3 - f0	p
 	jb4	X02c4		; 02a4 - 92 c4	.D
-	call	X0413		; 02a6 - 94 13	..
+	call	adc_math	; 02a6 - 94 13	..
 	mov	r0,#0x2d	; 02a8 - b8 2d	8-
 	mov	a,@r0		; 02aa - f0	p
 	add	a,#0xd0		; 02ab - 03 d0	.P
 	jnc	X02c4		; 02ad - e6 c4	fD
-	jnz	X02b7		; 02af - 96 b7	.7
+	jnz	set_ovld_flag	; 02af - 96 b7	.7
 	inc	r0		; 02b1 - 18	.
 	mov	a,@r0		; 02b2 - f0	p
 	add	a,#0xcf		; 02b3 - 03 cf	.O
 	jnc	X02c4		; 02b5 - e6 c4	fD
-X02b7:	mov	r0,#0x30	; 02b7 - b8 30	80
+set_ovld_flag:
+	mov	r0,#0x30	; 02b7 - b8 30	80	; set if reading MSdigits <= "3029" . Not clear where it gets cleared
 	mov	a,@r0		; 02b9 - f0	p
 	orl	a,#0x8		; 02ba - 43 08	C.
 	mov	@r0,a		; 02bc - a0	 
@@ -492,16 +493,17 @@ X040d:	orl	a,r7		; 040d - 4f	O
 	movx	@r0,a		; 0411 - 90	.	; SPMODE
 	retr			; 0412 - 93	.
 ;
-X0413:	mov	r0,#0x2d	; 0413 - b8 2d	8-	; do math on raw ADC val ?
+adc_math:
+	mov	r0,#0x2d	; 0413 - b8 2d	8-	; do math on raw ADC val
 	mov	a,@r0		; 0415 - f0	p
 	dec	r0		; 0416 - c8	H
-	mov	@r0,#0x99	; 0417 - b0 99	0.
+	mov	@r0,#0x99	; 0417 - b0 99	0.	; kind of "sign extend"; iram[2C] is not part of the adc reading
 	jb7	X041f		; 0419 - f2 1f	r.
 	jb6	X041f		; 041b - d2 1f	R.
 	mov	@r0,#0x0	; 041d - b0 00	0.
 X041f:	mov	r0,#0x41	; 041f - b8 41	8A
 	mov	a,@r0		; 0421 - f0	p
-	jb0	X0459		; 0422 - 12 59	.Y
+	jb0	uncal_skipoffs	; 0422 - 12 59	.Y
 	sel	mb1		; 0424 - f5	u
 	call	getaddr		; 0425 - d4 00	T.
 	sel	mb0		; 0427 - e5	e
@@ -517,7 +519,7 @@ X0436:	mov	a,@r1		; 0436 - f1	q
 	inc	r1		; 0437 - 19	.
 	anl	a,#0xf0		; 0438 - 53 f0	Sp
 	mov	@r1,a		; 043a - a1	!
-X043b:	movx	a,@r0		; 043b - 80	.	; reassemble offset[6] from CALRAM
+X043b:	movx	a,@r0		; 043b - 80	.	; reassemble offset[6] from CALRAM into iram[32]
 	anl	a,#0xf		; 043c - 53 0f	S.
 	orl	a,@r1		; 043e - 41	A
 	mov	@r1,a		; 043f - a1	!
@@ -533,14 +535,15 @@ X043b:	movx	a,@r0		; 043b - 80	.	; reassemble offset[6] from CALRAM
 	mov	r0,#0x30	; 044c - b8 30	80
 	mov	r1,#0x36	; 044e - b9 36	96
 	clr	c		; 0450 - 97	.
-X0451:	mov	a,@r0		; 0451 - f0	p	; cal2C[] += cal36[] ?
+X0451:	mov	a,@r0		; 0451 - f0	p	; ADC val @ cal2C[] += cal32[]
 	addc	a,@r1		; 0452 - 71	q
 	da	a		; 0453 - 57	W
 	mov	@r0,a		; 0454 - a0	 
 	dec	r0		; 0455 - c8	H
 	dec	r1		; 0456 - c9	I
 	djnz	r2,X0451	; 0457 - ea 51	jQ
-X0459:	mov	r0,#0x2c	; 0459 - b8 2c	8,
+uncal_skipoffs:
+	mov	r0,#0x2c	; 0459 - b8 2c	8,	; seems like we're doing "9's complement" if the cal offset was "negative"	; here, cal2C[] contains a 10digit BCB number == "adc + cal_offs"
 	mov	a,@r0		; 045b - f0	p
 	jz	X046a		; 045c - c6 6a	Fj
 	mov	r0,#0x30	; 045e - b8 30	80
@@ -556,7 +559,7 @@ X046a:	mov	r0,#0x3f	; 046a - b8 3f	8?
 	mov	r0,#0x2f	; 046d - b8 2f	8/
 	jb1	X0472		; 046f - 32 72	2r
 	inc	r0		; 0471 - 18	.
-X0472:	rrc	a		; 0472 - 67	g
+X0472:	rrc	a		; 0472 - 67	g	; why are we adding 50 ? (or 5)
 	mov	a,#0x50		; 0473 - 23 50	#P
 	jc	X0478		; 0475 - f6 78	vx
 	swap	a		; 0477 - 47	G
@@ -572,14 +575,15 @@ X0479:	addc	a,@r0		; 0479 - 70	p
 	mov	r0,#0x41	; 0483 - b8 41	8A
 	mov	a,@r0		; 0485 - f0	p
 	rrc	a		; 0486 - 67	g
-	jnc	X048a		; 0487 - e6 8a	f.
+	jnc	_adcmath_continue; 0487 - e6 8a	f.
 	retr			; 0489 - 93	.
 ;
-X048a:	mov	r0,#0x2d	; 048a - b8 2d	8-
+_adcmath_continue:
+	mov	r0,#0x2d	; 048a - b8 2d	8-
 	mov	r1,#0x33	; 048c - b9 33	93
 	mov	r2,#0x3		; 048e - ba 03	:.
 	mov	@r1,#0x0	; 0490 - b1 00	1.
-X0492:	inc	r1		; 0492 - 19	.
+X0492:	inc	r1		; 0492 - 19	.	; copy cal2C[] to iram[33][4]
 	mov	a,@r0		; 0493 - f0	p
 	mov	@r1,a		; 0494 - a1	!
 	inc	r0		; 0495 - 18	.
@@ -622,7 +626,8 @@ X04af:	mov	r7,a		; 04af - af	/
 X04ca:	sel	mb1		; 04ca - f5	u
 	call	print_calstr_r2	; 04cb - b4 c5	4E
 	sel	mb0		; 04cd - e5	e
-X04ce:	inc	r7		; 04ce - 1f	.
+rd_spstat_tbl:
+	inc	r7		; 04ce - 1f	.
 	mov	a,r7		; 04cf - ff	.
 	movp	a,@a		; 04d0 - a3	#
 	mov	r0,#0x42	; 04d1 - b8 42	8B
@@ -651,10 +656,10 @@ romck_04fc:
 	mov	r6,a		; 0503 - ae	.
 	jmp	romck_06fd	; 0504 - c4 fd	D}
 ;
-; this section seems to parse the cal (offset?) constant,
+; this section seems to parse the cal constant pointed by r7;
 ; if the first digit is 8 or 9, the # is negative ?
 readcal_r7_sign?:
-	jf0	X0509		; 0506 - b6 09	6.	; (movx = from CALRAM)
+	jf0	X0509		; 0506 - b6 09	6.	; i: r7=cal_addr, r4=sizeof(val?),r6=?. (movx setup for CALRAM)
 	dec	r4		; 0508 - cc	L
 X0509:	cpl	f0		; 0509 - 95	.
 	mov	a,r7		; 050a - ff	.
@@ -1004,7 +1009,7 @@ X0804:	mov	r0,#0x57	; 0804 - b8 57	8W
 	jf1	print_ENABLECAL	; 0826 - 76 f8	vx
 	mov	r0,#0x58	; 0828 - b8 58	8X
 	mov	r2,#0x5		; 082a - ba 05	:.
-	call	memset0_r2	; 082c - f4 09	t.
+	call	memsetr2_r0	; 082c - f4 09	t.
 	mov	r0,#0x3f	; 082e - b8 3f	8?
 	mov	a,@r0		; 0830 - f0	p
 	xrl	a,#0x40		; 0831 - d3 40	S@
@@ -1036,7 +1041,7 @@ X0857:	mov	r0,#0x39	; 0857 - b8 39	89
 	mov	@r0,a		; 085c - a0	 
 	inc	r0		; 085d - 18	.
 	mov	r2,#0x3		; 085e - ba 03	:.
-	call	memset0_r2	; 0860 - f4 09	t.
+	call	memsetr2_r0	; 0860 - f4 09	t.
 	mov	r0,#0x55	; 0862 - b8 55	8U
 	mov	@r0,#0x14	; 0864 - b0 14	0.
 kp_call_a12:
@@ -1479,7 +1484,7 @@ X0c15:	mov	r0,#0x2c	; 0c15 - b8 2c	8,
 	mov	r1,#0x32	; 0c35 - b9 32	92
 	call	cal_cpy5_to_r1	; 0c37 - f4 0f	t.
 	mov	r0,#0x2c	; 0c39 - b8 2c	8,
-	call	X0f07		; 0c3b - f4 07	t.
+	call	memset5_r0	; 0c3b - f4 07	t.
 	mov	r0,#0x2d	; 0c3d - b8 2d	8-
 	mov	@r0,#0x90	; 0c3f - b0 90	0.
 	call	BCD_div?	; 0c41 - b4 97	4.
@@ -1700,7 +1705,7 @@ X0d93:	add	a,#0xa		; 0d93 - 03 0a	..
 BCD_div?:
 	mov	r0,#0x44	; 0d97 - b8 44	8D
 	mov	r2,#0x8		; 0d99 - ba 08	:.
-	call	memset0_r2	; 0d9b - f4 09	t.	; 0x44[0..7]=0
+	call	memsetr2_r0	; 0d9b - f4 09	t.	; 0x44[0..7]=0
 	clr	f1		; 0d9d - a5	%
 	mov	r5,#0x44	; 0d9e - bd 44	=D
 	mov	r3,#0x8		; 0da0 - bb 08	;.
@@ -1790,12 +1795,13 @@ romck_0efc:
 	sel	mb0		; 0f04 - e5	e
 	jmp	X06e9		; 0f05 - c4 e9	Di
 ;
-X0f07:	mov	r2,#0x5		; 0f07 - ba 05	:.
-memset0_r2:
+memset5_r0:
+	mov	r2,#0x5		; 0f07 - ba 05	:.	; clr 5 bytes @r0
+memsetr2_r0:
 	clr	a		; 0f09 - 27	'	; clear (r2) bytes @ r0
 	mov	@r0,a		; 0f0a - a0	 
 	inc	r0		; 0f0b - 18	.
-	djnz	r2,memset0_r2	; 0f0c - ea 09	j.
+	djnz	r2,memsetr2_r0	; 0f0c - ea 09	j.
 	retr			; 0f0e - 93	.
 ;
 ; i:( r0 = src, r1 = dest) . Copy 5 bytes
@@ -3157,8 +3163,8 @@ X16aa:	mov	r0,#0x40	; 16aa - b8 40	8@
 	jnc	retr_16bb	; 16b1 - e6 bb	f;
 	mov	a,#0x83		; 16b3 - 23 83	#.
 X16b5:	mov	r1,#0x4b	; 16b5 - b9 4b	9K
-	call	X17ce		; 16b7 - f4 ce	tN
-	call	X172d		; 16b9 - f4 2d	t-
+	call	disp_putc_allbits; 16b7 - f4 ce	tN
+	call	disp_markchanged; 16b9 - f4 2d	t-
 retr_16bb:
 	retr			; 16bb - 93	.
 ;
@@ -3258,14 +3264,14 @@ X171e:	mov	r1,#0x44	; 171e - b9 44	9D
 disp_print_r2:
 	mov	a,r2		; 1724 - fa	z
 	movp	a,@a		; 1725 - a3	#
-	jz	X172d		; 1726 - c6 2d	F-
+	jz	disp_markchanged; 1726 - c6 2d	F-
 	call	disp_putc	; 1728 - f4 c5	tE
 	inc	r2		; 172a - 1a	.
 	jmp	disp_print_r2	; 172b - e4 24	d$
 ;
-X172d:	jf0	retr_1739	; 172d - b6 39	69
+disp_markchanged:
+	jf0	retr_1739	; 172d - b6 39	69	; set "Hnib_changed" and "Lnib_changed" flags in [55]
 	mov	r0,#0x55	; 172f - b8 55	8U
-; 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
 	mov	a,@r0		; 1731 - f0	p
 	orl	a,#0x80		; 1732 - 43 80	C.
 	jf1	X1738		; 1734 - 76 38	v8
@@ -3276,6 +3282,7 @@ retr_1739:
 ;
 ; string tables !
 ; bit flags : 0x80 = ?, 0x40 : decimal point !
+; 1 to 0x1A maps to 'A'-'Z' ! (ASCII - 0x40)
 ; SELF TEST
 str173A_3a:
 	db	0x13,0x5,0xc,0x6,0x20,0x14,0x5,0x13	; 173a .... ...
@@ -3322,24 +3329,25 @@ str173A_b8:
 	db	0x14,0x20,0xf,0xb,0x0			; 17c0 . ...
 ;
 disp_putc:
-	jnc	X17ce		; 17c5 - e6 ce	fN	; write to dispbuf : i: a=val, r1=&dest,
+	jnc	disp_putc_allbits; 17c5 - e6 ce	fN	; write to dispbuf : i: a=char, r1=&dest, Cy="bool charonly". Set f0,f1 if H/L nib changed
 	anl	a,#0x3f		; 17c7 - 53 3f	S?
 	mov	r7,a		; 17c9 - af	/
 X17ca:	mov	a,@r1		; 17ca - f1	q
 	anl	a,#0xc0		; 17cb - 53 c0	S@
 	orl	a,r7		; 17cd - 4f	O
-X17ce:	xch	a,@r1		; 17ce - 21	!
+disp_putc_allbits:
+	xch	a,@r1		; 17ce - 21	!
 	xrl	a,@r1		; 17cf - d1	Q
 	jz	X17d8		; 17d0 - c6 d8	FX
 	clr	f0		; 17d2 - 85	.
 	anl	a,#0xf0		; 17d3 - 53 f0	Sp
 	jz	X17d8		; 17d5 - c6 d8	FX
 	clr	f1		; 17d7 - a5	%
-X17d8:	inc	r1		; 17d8 - 19	.	; putc_samechar	; j if not changed; else clr f0
+X17d8:	inc	r1		; 17d8 - 19	.	; _samechar
 	ret			; 17d9 - 83	.
 ;
 cal_toggle0:
-	sel	mb1		; 17da - f5	u	; (toggle calram[0] and ret a)
+	sel	mb1		; 17da - f5	u	; toggle calram[0] and ret a + set carry if calram was writeable
 	call	_cal_toggle0	; 17db - 54 4c	TL
 	sel	mb0		; 17dd - e5	e
 	ret			; 17de - 83	.
@@ -3497,7 +3505,7 @@ render_reading:
 	cpl	f1		; 18b0 - b5	5
 	mov	r0,#0x3d	; 18b1 - b8 3d	8=
 	mov	a,@r0		; 18b3 - f0	p
-	jb3	X18f7		; 18b4 - 72 f7	rw
+	jb3	jmp_set_OVLD	; 18b4 - 72 f7	rw
 	mov	r0,#0x39	; 18b6 - b8 39	89
 	mov	r1,#0x38	; 18b8 - b9 38	98
 	mov	a,@r1		; 18ba - f1	q
@@ -3542,7 +3550,8 @@ X18f2:	anl	a,#0xfd		; 18f2 - 53 fd	S}
 	mov	@r0,a		; 18f4 - a0	 
 	jmp	X182b		; 18f5 - 04 2b	.+
 ;
-X18f7:	jmp	X1a18		; 18f7 - 44 18	D.
+jmp_set_OVLD:
+	jmp	set_OVLD	; 18f7 - 44 18	D.
 ;
 	org	0x18fc
 ;
@@ -3754,15 +3763,16 @@ pulse_dispck:
 	anl	p2,#0xdf	; 1a15 - 9a df	._
 	retr			; 1a17 - 93	.
 ;
-X1a18:	mov	r0,#0x37	; 1a18 - b8 37	87
+set_OVLD:
+	mov	r0,#0x37	; 1a18 - b8 37	87
 	mov	@r0,#0x0	; 1a1a - b0 00	0.
 	clr	c		; 1a1c - 97	.
 	cpl	c		; 1a1d - a7	'
 	mov	r1,#0x44	; 1a1e - b9 44	9D
-	mov	r2,#0xa2	; 1a20 - ba a2	:"
+	mov	r2,#0xa2	; 1a20 - ba a2	:"	; string 0xa2 : "OVLD"
 	jmp	X18e0		; 1a22 - 04 e0	.`
 ;
-X1a24:	mov	r0,#0x4f	; 1a24 - b8 4f	8O
+X1a24:	mov	r0,#0x4f	; 1a24 - b8 4f	8O	; blink last digit point ?
 	mov	r1,#0x41	; 1a26 - b9 41	9A
 	mov	a,@r0		; 1a28 - f0	p
 	jb6	X1a2f		; 1a29 - d2 2f	R/
@@ -4044,7 +4054,7 @@ X1f19:	mov	a,r0		; 1f19 - f8	x
 	inc	r0		; 1f1a - 18	.
 	movp	a,@a		; 1f1b - a3	#
 	sel	mb0		; 1f1c - e5	e
-	call	X17ce		; 1f1d - f4 ce	tN
+	call	disp_putc_allbits; 1f1d - f4 ce	tN
 	sel	mb1		; 1f1f - f5	u
 	djnz	r2,X1f19	; 1f20 - ea 19	j.
 	call	X1a7d		; 1f22 - 54 7d	T}
@@ -4071,7 +4081,7 @@ X1f2d:	sel	mb0		; 1f2d - e5	e
 	movp	a,@a		; 1f3d - a3	#
 	mov	r1,#0x4c	; 1f3e - b9 4c	9L
 	sel	mb0		; 1f40 - e5	e
-	call	X17ce		; 1f41 - f4 ce	tN
+	call	disp_putc_allbits; 1f41 - f4 ce	tN
 	inc	r0		; 1f43 - 18	.
 	mov	a,r0		; 1f44 - f8	x
 	movp	a,@a		; 1f45 - a3	#

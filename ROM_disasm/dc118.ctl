@@ -149,7 +149,9 @@ l 0d97 BCD_div?
 L 0E00 getaddr
 ! 0e00 getaddr(idcal) with tableread
 l 0e0d ret_getaddr
-L 0f09 memset0_r2
+l 0f07 memset5_r0
+! 0f07 clr 5 bytes @r0
+L 0f09 memsetr2_r0
 ! 0f09 clear (r2) bytes @ r0
 L 0f0f cal_cpy5_to_r1
 # 0f0f i:( r0 = src, r1 = dest) . Copy 5 bytes
@@ -173,6 +175,9 @@ l 114b key_LCL_or_SRQ
 l 1157 key_found
 ! 1157 when found, r0 = 0x20 + key_id
 
+l 18f7 jmp_set_OVLD
+l 1a18 set_OVLD
+! 1a20 string 0xa2 : "OVLD"
 
 l 15a8 func_change
 # 15a8 i: a = new mode (1 = DCV, 2=ACV, 2W,etc..)
@@ -427,13 +432,18 @@ L 1949 retr_1949
 
 
 ;************* locs with low confidence
+! 00cf copy iRAM[2C] => iRAM[39]
 l 0106 isol_dly
 ! 0106 approx 10-15ms ? rough calc
+l 02b7 set_ovld_flag
+! 02b7 set if reading MSdigits >= "3029" . Not sure where it gets cleared
 l 0413 adc_math
 ! 0413 do math on raw ADC val
 ! 0417 kind of "sign extend"; iram[2C] is not part of the adc reading
-! 0459 why are we adding 50 ?
+! 0459 seems like we're doing "9's complement" if the cal offset was "negative"
 l 0459 uncal_skipoffs
+! 0472 why are we adding 50 ? (or 5)
+l 048a _adcmath_continue
 l 04ce rd_spstat_tbl
 
 l 0643 reset_debug
@@ -478,7 +488,7 @@ l 147d jmpt1407_7d
 
 l 15bb sub_15bb
 l 17da cal_toggle0
-! 17da (toggle calram[0] and ret a)
+! 17da toggle calram[0] and ret a + set carry if calram was writeable
 l 17e9 sub_17E9
 l 1800 clr_A12_ret
 ! 1a24 blink last digit point ?
