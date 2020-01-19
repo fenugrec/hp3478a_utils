@@ -220,7 +220,7 @@ static double getgain(const u8 *gstr) {
 		dig = gstr[cur] & 0x0F;
 		if (dig & 0x08) {
 			// digit is negative, i.e. 0x0C is -4
-			gain -= dig * mult;
+			gain += (dig-16) * mult;
 		} else {
 			gain += dig * mult;
 		}
