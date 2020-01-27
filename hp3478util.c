@@ -14,7 +14,9 @@
  *
  */
 
+#include <assert.h>
 #include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -40,6 +42,21 @@
 // structure of cal data :
 #define CAL_OFFSETSIZE	0x06	//6 first nibs : BCD offset value
 
+
+struct gain_test {
+	double gain;
+	u8 gstr[5];
+};
+
+static const struct gain_test gtests[] = {
+								{1.049000, {5,0xF,0,0,0}},
+								{1.000006, {0,0,0,0x1,0xC}},	//this one "works" but should be encoded as 00006, not 0001C
+								{0.911112, {8,8,8,8,8}},
+								{1.077777, {7,7,7,7,7}},
+								{1.012906, {1,3,0xF,1,0xC}},	//same. how does the firmware come up with this
+								{0.988906, {0xf,0xf,0xf,1,0xc}}
+							};
+#define NUM_GTESTS (sizeof(gtests)/sizeof(struct gain_test))
 
 static const int rec_unused[] = {0x05, 0x10, 0x12, -1};	//these entries are always (?) unused and *may* have a bad checksum ?
 
@@ -229,6 +246,138 @@ static double getgain(const u8 *gstr) {
 	return gain;
 }
 
+
+
+/** incr/decrement the digit #_pos, correcting all digits towards the left
+ * if add : incr
+ * if !add : decr
+ * caller must have range-checked the input
+ */
+static void adjusticate(int *digits, bool add, unsigned pos) {
+	assert((pos >= 1) && (pos <= 5));
+
+	unsigned cur;
+	int adj;
+	if (add) {
+		adj = 1;
+	} else {
+		adj = -1;
+	}
+
+	for (cur = pos; cur >= 1; cur -= 1) {
+		int dig = digits[cur - 1];
+		dig += adj;
+
+		if (dig < -8) {
+			//borrow : continue looping but with "-1" as next operation
+			assert(cur != 1);	//can't happen !
+			adj = -1;
+			dig = (10 - dig);
+		} else if (dig > 7) {
+			//carry: continue loop with "+1" for next op
+			assert(cur != 1);	//can't happen !
+			adj = 1;
+			dig = dig - 10;
+		} else {
+			//digit within bounds : add 0 on next
+			adj = 0;
+		}
+		digits[cur - 1] = dig;
+	}
+}
+
+#define MAX_GAIN ((double) 1.077777)
+#define MIN_GAIN ((double) 0.911112)
+/** gain must be given as the ratio of cal_reading / raw_reading
+ * gain constant written to gstr[] as binary values 0-F (not ASCII)
+ *
+ *
+ */
+
+static void encode_gain(u8 *gstr, double gain) {
+	memset(gstr, 0, 5);
+	int k[5] = {0};	//digit K_values
+
+	long kf_int = (1.0E6 * gain) - 1E6; // otherwise, problems with the last digit because of precision
+	long divider = 1E4L;
+
+
+	if ((gain > MAX_GAIN) || (gain < MIN_GAIN)) {
+		printf("gain out of range, setting to 1.0\n");
+		return;
+	}
+
+	unsigned cur;	//current digit
+
+	for (cur = 1; cur <= 5; cur += 1) {
+		int tmp = kf_int / divider;	//get digit
+
+		//printf("kf_int : %ld,", kf_int);
+		//printf("digit %u: %d\n", cur, tmp);
+
+		//can't just toss the digit in the string : need to adjust.
+		
+		if (tmp >= 8) {
+			//crap, need to adjusticate.
+			assert(cur != 1);	//can't adjust on this digit !
+			k[cur - 1] = tmp - 10;
+			adjusticate(k, 1, cur - 1);
+		} else if (tmp <= -9) {
+			assert(cur != 1);	//can't adjust on this digit !
+			k[cur - 1] = 10 + tmp;
+			adjusticate(k, 0, cur - 1);
+		} else {
+			//valid digit as-is
+			k[cur - 1] = tmp;
+		}
+		
+		//ok, for next loop : drop current digit and left shift.
+		kf_int -= (tmp * divider);
+		divider /= 10;
+	}
+
+	// all done, now convert k_values to proper digits 0x0 - 0xF
+	for (cur = 1; cur <= 5; cur += 1) {
+		int k_value = k[cur - 1];
+		if (k_value < 0) {
+			gstr[cur - 1] = 0x10 + k_value;
+		} else {
+			gstr[cur - 1] = k_value;
+		}
+	}
+	return;
+}
+
+/* ret 1 if ok */
+static bool selftest(void) {
+	u8 gstr[5];
+
+	unsigned idx;
+
+	for (idx = 0; idx < NUM_GTESTS; idx += 1) {
+		double realgain, tmpgain;
+		realgain = gtests[idx].gain;
+		long intgain = round(1.0E6 * realgain);
+		
+		//test roundtrip conversion
+		encode_gain(gstr, realgain);
+		tmpgain = getgain(gstr);
+		long itmpgain = round(1.0E6 * tmpgain);
+		//if (memcmp(gstr, gtests[idx].gstr,5)) {
+		//memcmp() is too strict (see comments in test cases)
+		if (intgain != itmpgain) {
+			printf("test %u failed: calcgain=%f (%ld), g=%f (%ld)\n",
+					idx, tmpgain, itmpgain, realgain, intgain);
+			unsigned cur;
+			for (cur=0; cur <= 4; cur++) {
+				printf("%X:%X\n", gstr[cur], gtests[idx].gstr[cur]);
+			}
+			return 0;
+		}
+	}
+	return 1;
+}
+
 /** print out raw data for every cal entry */
 static void dump_entries(const u8 *caldata) {
 	int recindex;
@@ -344,8 +493,12 @@ int main(int argc, char * argv[]) {
 	FILE *ofile = NULL;
 	u8	caldata[CALSIZE];
 
-	printf(	"**** %s\n"
-		"**** (c) 2018 fenugrec\n", argv[0]);
+	printf(	"************ hp3478util, "
+		"(c) 2018-2020 fenugrec ************\n");
+
+	if (!selftest()) {
+		return -1;
+	}
 
 	while((c = getopt_long(argc, argv, "dta:b:p:g:h",
 			       long_options, &optidx)) != -1) {
