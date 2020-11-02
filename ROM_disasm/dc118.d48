@@ -1,6 +1,6 @@
 ;
 ;  D48 V3.5.0 8048 Disassembly of dc118.bin
-;  2018/11/25 16:02
+;  2020/11/02 11:18
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -406,7 +406,7 @@ X0292:	call	isol_synctx	; 0292 - b4 5c	4\
 	add	a,#0xcf		; 02b3 - 03 cf	.O
 	jnc	X02c4		; 02b5 - e6 c4	fD
 set_ovld_flag:
-	mov	r0,#0x30	; 02b7 - b8 30	80	; set if reading MSdigits <= "3029" . Not clear where it gets cleared
+	mov	r0,#0x30	; 02b7 - b8 30	80	; set if reading MSdigits >= "3029" . Not sure where it gets cleared
 	mov	a,@r0		; 02b9 - f0	p
 	orl	a,#0x8		; 02ba - 43 08	C.
 	mov	@r0,a		; 02bc - a0	 
@@ -2174,12 +2174,12 @@ key_found:
 	call	sub_17E9	; 1157 - f4 e9	ti	; when found, r0 = 0x20 + key_id
 	mov	r1,#0x24	; 1159 - b9 24	9$
 	mov	a,@r1		; 115b - f1	q
-	jb6	X1162		; 115c - d2 62	Rb
+	jb6	X1162		; 115c - d2 62	Rb	; jmp if shifted (ram[0x24] & 0x40)
 	mov	a,#0x49		; 115e - 23 49	#I
 	jmp	X1167		; 1160 - 24 67	$g
 ;
 X1162:	anl	a,#0xbf		; 1162 - 53 bf	S?
-	mov	@r1,a		; 1164 - a1	!
+	mov	@r1,a		; 1164 - a1	!	; clr shifted flag @ (ram[24] & 0x40)
 	mov	a,#0x57		; 1165 - 23 57	#W
 X1167:	add	a,r0		; 1167 - 68	h
 	jmpp	@a		; 1168 - b3	3
@@ -3128,10 +3128,12 @@ X167c:	cpl	a		; 167c - 37	7
 	mov	@r0,a		; 1685 - a0	 
 	jmp	X15b5		; 1686 - a4 b5	$5
 ;
-X1688:	mov	r1,#0x51	; 1688 - b9 51	9Q
+rotl_annun4:
+	mov	r1,#0x51	; 1688 - b9 51	9Q	; rotate through carry of [51] and [52] (annun regs SRQ..RMT)
 	jmp	X168e		; 168a - c4 8e	D.
 ;
-X168c:	mov	r1,#0x53	; 168c - b9 53	9S
+rotl_annun8:
+	mov	r1,#0x53	; 168c - b9 53	9S	; rotate through carry of [53] and [54] (annun regs MATH..SHIFT)
 X168e:	mov	a,@r1		; 168e - f1	q
 	rl	a		; 168f - e7	g
 	mov	@r1,a		; 1690 - a1	!
@@ -3682,63 +3684,63 @@ X19a7:	mov	@r0,a		; 19a7 - a0
 	mov	@r0,a		; 19ab - a0	 
 	mov	a,#0xcd		; 19ac - 23 cd	#M
 	outl	p2,a		; 19ae - 3a	:
-GPIB_getSPSTAT?:
-	mov	r0,#0x3		; 19af - b8 03	8.
+generate_annuns:
+	mov	r0,#0x3		; 19af - b8 03	8.	; shift in all conditions into annun toggle regs (52, 54) !
 	movx	a,@r0		; 19b1 - 80	.	; SPSTAT
 	rlc	a		; 19b2 - f7	w
 	rlc	a		; 19b3 - f7	w	; Carry = SRQS
 	sel	mb0		; 19b4 - e5	e
-	call	X1688		; 19b5 - d4 88	T.
+	call	rotl_annun4	; 19b5 - d4 88	T.
 	mov	r0,#0x4		; 19b7 - b8 04	8.
 	movx	a,@r0		; 19b9 - 80	.	; get ADRS
 	rrc	a		; 19ba - 67	g
 	rrc	a		; 19bb - 67	g
-	rrc	a		; 19bc - 67	g
-	call	X1688		; 19bd - d4 88	T.
-	movx	a,@r0		; 19bf - 80	.
+	rrc	a		; 19bc - 67	g	; carry = LA
+	call	rotl_annun4	; 19bd - d4 88	T.
+	movx	a,@r0		; 19bf - 80	.	; get ADRS again
 	rrc	a		; 19c0 - 67	g
-	rrc	a		; 19c1 - 67	g
-	call	X1688		; 19c2 - d4 88	T.
+	rrc	a		; 19c1 - 67	g	; carry = TA
+	call	rotl_annun4	; 19c2 - d4 88	T.
 	mov	r0,#0x26	; 19c4 - b8 26	8&
 	mov	a,@r0		; 19c6 - f0	p
 	swap	a		; 19c7 - 47	G
-	rrc	a		; 19c8 - 67	g
-	call	X1688		; 19c9 - d4 88	T.
+	rrc	a		; 19c8 - 67	g	; carry = ram[26].bit4, RMT according to annun ordering
+	call	rotl_annun4	; 19c9 - d4 88	T.
 	clr	c		; 19cb - 97	.
-	call	X168c		; 19cc - d4 8c	T.
+	call	rotl_annun8	; 19cc - d4 8c	T.	; MATH=0
 	mov	r0,#0x40	; 19ce - b8 40	8@
 	mov	a,@r0		; 19d0 - f0	p
 	rrc	a		; 19d1 - 67	g
 	rrc	a		; 19d2 - 67	g
 	rrc	a		; 19d3 - 67	g
-	cpl	c		; 19d4 - a7	'
-	call	X168c		; 19d5 - d4 8c	T.
+	cpl	c		; 19d4 - a7	'	; AZ_OFF = ~(ram[0x40] & 0x04)
+	call	rotl_annun8	; 19d5 - d4 8c	T.
 	dec	r0		; 19d7 - c8	H
 	mov	a,@r0		; 19d8 - f0	p
 	add	a,#0x80		; 19d9 - 03 80	..
-	add	a,#0x20		; 19db - 03 20	. 
-	call	X168c		; 19dd - d4 8c	T.
+	add	a,#0x20		; 19db - 03 20	. 	; 2OHM = (ram[3F] >= 0x60 && ram3F < 0x80) ??
+	call	rotl_annun8	; 19dd - d4 8c	T.
 	mov	a,@r0		; 19df - f0	p
 	add	a,#0x60		; 19e0 - 03 60	.`
-	add	a,#0x20		; 19e2 - 03 20	. 
-	call	X168c		; 19e4 - d4 8c	T.
+	add	a,#0x20		; 19e2 - 03 20	. 	; 4OHM = (ram[3F] >= 0x80 & ram3F < 0xA0) ??
+	call	rotl_annun8	; 19e4 - d4 8c	T.
 	inc	r0		; 19e6 - 18	.
-	mov	a,@r0		; 19e7 - f0	p
+	mov	a,@r0		; 19e7 - f0	p	; a=ram[40]
 	rrc	a		; 19e8 - 67	g
 	rrc	a		; 19e9 - 67	g
-	cpl	c		; 19ea - a7	'
-	call	X168c		; 19eb - d4 8c	T.
+	cpl	c		; 19ea - a7	'	; M_RNG = ~(ram[40] & 0x02)
+	call	rotl_annun8	; 19eb - d4 8c	T.
 	mov	a,@r0		; 19ed - f0	p
 	rrc	a		; 19ee - 67	g
-	cpl	c		; 19ef - a7	'
-	call	X168c		; 19f0 - d4 8c	T.
-	clr	c		; 19f2 - 97	.
-	call	X168c		; 19f3 - d4 8c	T.
+	cpl	c		; 19ef - a7	'	; S_TRG = ~(ram[40] & 0x01)
+	call	rotl_annun8	; 19f0 - d4 8c	T.
+	clr	c		; 19f2 - 97	.	; CAL=off
+	call	rotl_annun8	; 19f3 - d4 8c	T.
 	mov	r0,#0x24	; 19f5 - b8 24	8$
 	mov	a,@r0		; 19f7 - f0	p
 	rlc	a		; 19f8 - f7	w
-	rlc	a		; 19f9 - f7	w
-	call	X168c		; 19fa - d4 8c	T.
+	rlc	a		; 19f9 - f7	w	; ram[24] & 0x40 : SHIFT
+	call	rotl_annun8	; 19fa - d4 8c	T.
 	sel	mb1		; 19fc - f5	u
 	retr			; 19fd - 93	.
 ;
@@ -3995,7 +3997,7 @@ X1e00:	sel	mb0		; 1e00 - e5	e
 X1e13:	call	keyjmp_d6_INT	; 1e13 - 34 d6	4V	; still mb0
 	jmp	X1a8f		; 1e15 - 44 8f	D.
 ;
-X1e17:	call	GPIB_getSPSTAT?	; 1e17 - 34 af	4/
+X1e17:	call	generate_annuns	; 1e17 - 34 af	4/
 X1e19:	anl	a,#0xdf		; 1e19 - 53 df	S_
 	mov	@r0,a		; 1e1b - a0	 
 	jmp	X1a8f		; 1e1c - 44 8f	D.
@@ -4005,20 +4007,20 @@ X1e1e:	orl	p2,#0xf		; 1e1e - 8a 0f	..
 	mov	r0,#0x5		; 1e22 - b8 05	8.
 	mov	a,#0x4		; 1e24 - 23 04	#.
 	movx	@r0,a		; 1e26 - 90	.	; AUXMODE = TRIG
-	call	GPIB_getSPSTAT?	; 1e27 - 34 af	4/
+	call	generate_annuns	; 1e27 - 34 af	4/
 X1e29:	dec	r0		; 1e29 - c8	H
 	mov	a,@r0		; 1e2a - f0	p	; a = ADDRSTAT?
 	anl	a,#0xdf		; 1e2b - 53 df	S_
 	mov	@r0,a		; 1e2d - a0	 
 	jmp	X1a8f		; 1e2e - 44 8f	D.
 ;
-X1e30:	call	GPIB_getSPSTAT?	; 1e30 - 34 af	4/
+X1e30:	call	generate_annuns	; 1e30 - 34 af	4/
 	anl	a,#0xdf		; 1e32 - 53 df	S_
 	mov	@r0,a		; 1e34 - a0	 
 	clr	c		; 1e35 - 97	.
 	jnc	X1e29		; 1e36 - e6 29	f)
 ; sketch again : orl forces NZ, so this is unconditional !
-X1e38:	call	GPIB_getSPSTAT?	; 1e38 - 34 af	4/
+X1e38:	call	generate_annuns	; 1e38 - 34 af	4/
 	orl	a,#0x4		; 1e3a - 43 04	C.
 	jnz	X1e19		; 1e3c - 96 19	..
 ;

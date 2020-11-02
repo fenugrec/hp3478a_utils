@@ -174,6 +174,8 @@ l 114b key_LCL_or_SRQ
 ! 114d : here, iterate through tbl_keys @ 1320 !
 l 1157 key_found
 ! 1157 when found, r0 = 0x20 + key_id
+! 115c jmp if shifted (ram[0x24] & 0x40)
+! 1164 clr shifted flag @ (ram[24] & 0x40)
 
 l 18f7 jmp_set_OVLD
 l 1a18 set_OVLD
@@ -205,7 +207,6 @@ l 12c8 GPIB_RXalpha
 l 1251 GPIB_ISR1_BI
 l 12f0 GPIB_ISR1_BO
 l 1339 GPIB_sendreading?
-L 19AF GPIB_getSPSTAT?
 ! 00BC GPIB_CS
 ! 00C2 AUXMODE=4 trig
 ! 00C4 GPIB_release
@@ -320,6 +321,10 @@ l 1650 getdip_50hz
 ! 19B1 SPSTAT
 ! 19B3 Carry = SRQS
 ! 19b9 get ADRS
+! 19bc carry = LA
+! 19bf get ADRS again
+! 19c1 carry = TA
+! 19c8 carry = ram[26].bit4, RMT according to annun ordering
 ! 1E13 still mb0
 ! 1E20 GPIB_CS
 ! 1E26 AUXMODE = TRIG
@@ -379,6 +384,17 @@ l 1993 disp_send8d
 ! 1993 send 8 data bits. a=data
 l 1997 disp_send4d
 ! 1997 send 4 data bits (i: a & 0x0F)
+l 19AF generate_annuns
+! 19af shift in all conditions into annun toggle regs (52, 54) !
+! 19cc MATH=0
+! 19d4 AZ_OFF = ~(ram[0x40] & 0x04)
+! 19DB 2OHM = (ram[3F] >= 0x60 && ram3F < 0x80) ??
+! 19e2 4OHM = (ram[3F] >= 0x80 & ram3F < 0xA0) ??
+! 19e7 a=ram[40]
+! 19ea M_RNG = ~(ram[40] & 0x02)
+! 19ef S_TRG = ~(ram[40] & 0x01)
+! 19f2 CAL=off
+! 19f9 ram[24] & 0x40 : SHIFT
 l 1a00 pulse_dispck44
 ! 1a00 pulse clk1,clk2 0x44 cycles
 l 1a02 pulse_dispck_r2
@@ -487,6 +503,10 @@ l 146d jmpt1407_6d
 l 147d jmpt1407_7d
 
 l 15bb sub_15bb
+l 1688 rotl_annun4
+! 1688 rotate through carry of [51] and [52] (annun regs SRQ..RMT)
+l 168c rotl_annun8
+! 168c rotate through carry of [53] and [54] (annun regs MATH..SHIFT)
 l 17da cal_toggle0
 ! 17da toggle calram[0] and ret a + set carry if calram was writeable
 l 17e9 sub_17E9
