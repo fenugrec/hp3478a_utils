@@ -1,6 +1,6 @@
 ;
-;  D48 V3.5.0 8048 Disassembly of dc118.bin
-;  2020/11/02 11:18
+;  D48 V3.5.0 8048 Disassembly of ../../dc118.bin
+;  2022/12/09 22:42
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -2062,7 +2062,7 @@ tbl_flagerrors:
 ;
 GPIB_SPstat_r7:
 	mov	a,#0xcd		; 10cb - 23 cd	#M
-	outl	p2,a		; 10cd - 3a	:
+	outl	p2,a		; 10cd - 3a	:	; GPIB_CS, iso_out=1
 	mov	r0,#0x3		; 10ce - b8 03	8.
 	mov	r1,#0x29	; 10d0 - b9 29	9)
 	mov	a,@r1		; 10d2 - f1	q
@@ -2077,7 +2077,7 @@ X10d8:	orl	a,r7		; 10d8 - 4f	O
 	retr			; 10dd - 93	.
 ;
 X10de:	mov	a,#0xcd		; 10de - 23 cd	#M
-	outl	p2,a		; 10e0 - 3a	:
+	outl	p2,a		; 10e0 - 3a	:	; GPIB_CS, iso_out=1
 	mov	r0,#0x3		; 10e1 - b8 03	8.
 	movx	a,@r0		; 10e3 - 80	.	; SPSTAT
 	xch	a,r7		; 10e4 - 2f	/
@@ -2297,7 +2297,7 @@ keyjmp_ef_TESTRST:
 ;
 GPIB_intparsage:
 	mov	a,#0xcd		; 1200 - 23 cd	#M
-	outl	p2,a		; 1202 - 3a	:
+	outl	p2,a		; 1202 - 3a	:	; GPIB_CS, iso_out=1
 	mov	r0,#0x6		; 1203 - b8 06	8.
 	movx	a,@r0		; 1205 - 80	.	; get ADR0 ?
 	jb7	X120a		; 1206 - f2 0a	r.	; check INT bit
@@ -2918,7 +2918,7 @@ X154c:	mov	r2,#0x7d	; 154c - ba 7d	:}
 ;
 GPIB_init:
 	mov	a,#0xcb		; 155c - 23 cb	#K
-	outl	p2,a		; 155e - 3a	:
+	outl	p2,a		; 155e - 3a	:	; DIP_CS (, isol_out =1)
 	movx	a,@r0		; 155f - 80	.	; get DIP
 	mov	r7,a		; 1560 - af	/
 	mov	r0,#0x29	; 1561 - b8 29	8)
@@ -3683,7 +3683,7 @@ X19a7:	mov	@r0,a		; 19a7 - a0
 	swap	a		; 19aa - 47	G
 	mov	@r0,a		; 19ab - a0	 
 	mov	a,#0xcd		; 19ac - 23 cd	#M
-	outl	p2,a		; 19ae - 3a	:
+	outl	p2,a		; 19ae - 3a	:	; GPIB_CS, iso_out=1
 generate_annuns:
 	mov	r0,#0x3		; 19af - b8 03	8.	; shift in all conditions into annun toggle regs (52, 54) !
 	movx	a,@r0		; 19b1 - 80	.	; SPSTAT
@@ -4196,7 +4196,7 @@ X1fe6:	mov	r0,#0x51	; 1fe6 - b8 51	8Q
 	mov	@r0,a		; 1fec - a0	 
 	call	disp_update	; 1fed - 14 68	.h
 	mov	a,#0xcd		; 1fef - 23 cd	#M
-	outl	p2,a		; 1ff1 - 3a	:
+	outl	p2,a		; 1ff1 - 3a	:	; GPIB_CS, iso_out=1
 	jmp	X1fdf		; 1ff2 - e4 df	d_
 ;
 	db	0x2c,0xe0,0x2e,0x60,0x3a,0xa0,0x0	; 1ff4 ,`.`: .

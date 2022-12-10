@@ -13,7 +13,7 @@
 ; Commenting disassembly through this file is more tedious; edits to the
 ; generated output are of course clobbered on the next re-generation.
 ;
-; command : d48 -d -n -b <filename>
+; command : d48 -d -n -b <rom_filename>
 ; (-n gives 0x.. constants instead of ..h)
 
 
@@ -189,7 +189,10 @@ L 00BA GPIB_trig
 l 0400 GPIB_SPstuff
 L 1026 GPIB_DevClr
 l 10cb GPIB_SPstat_r7
+! 10cd GPIB_CS, iso_out=1
+! 10e0 GPIB_CS, iso_out=1
 l 1200 GPIB_intparsage
+! 1202 GPIB_CS, iso_out=1
 ! 1265 range check on received data : alphanum, digits, and \r\n
 l 1287 GPIB_RXbad
 ! 1287 alphab out of range / other stuf?
@@ -290,6 +293,7 @@ l 1454 jmp_rxbad
 ! 14E1 GPIB_release
 ! 14E3 GPIB_CS
 l 155c GPIB_init
+! 155e DIP_CS (, isol_out =1)
 ! 1565 check "power-on SRQ" dipswitch
 ! 156d GPIB_CS
 ! 1572 AUXMODE = creset
@@ -318,6 +322,7 @@ l 1650 getdip_50hz
 ! 1654 get DIP addr again
 ! 1656 keep 50/60Hz bit
 ! 17e9 get iRAM[2A], if < 0x3F then ret a |= 0x40 => check MTA/MLA ?
+! 19ae GPIB_CS, iso_out=1
 ! 19B1 SPSTAT
 ! 19B3 Carry = SRQS
 ! 19b9 get ADRS
@@ -332,6 +337,7 @@ l 1650 getdip_50hz
 # 1e38 sketch again : orl forces NZ, so this is unconditional !
 ! 1F05 ret to 16a5 !
 ! 1F8E r7 = rxbyte
+! 1ff1 GPIB_CS, iso_out=1
 
 
 ! 155f get DIP
