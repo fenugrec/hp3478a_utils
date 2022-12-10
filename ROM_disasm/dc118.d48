@@ -1,6 +1,6 @@
 ;
 ;  D48 V3.5.0 8048 Disassembly of ../../dc118.bin
-;  2022/12/09 22:42
+;  2022/12/10 18:59
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -63,7 +63,7 @@ X0031:	mov	r0,#0x3e	; 0031 - b8 3e	8>
 	mov	a,@r0		; 0044 - f0	p
 	cpl	a		; 0045 - 37	7
 	jb5	X006d		; 0046 - b2 6d	2m
-	call	X06f1		; 0048 - d4 f1	Tq
+	call	farcall_15bb	; 0048 - d4 f1	Tq
 	mov	r0,#0x40	; 004a - b8 40	8@
 	mov	a,@r0		; 004c - f0	p
 	orl	a,#0x20		; 004d - 43 20	C 
@@ -934,8 +934,10 @@ X06bd:	mov	r0,#0x2f	; 06bd - b8 2f	8/
 	mov	@r0,a		; 06c2 - a0	 
 	retr			; 06c3 - 93	.
 ;
-	org	0x6d3
+; a few far call "bridges" here
+	org	0x6d2
 ;
+	nop			; 06d2 - 00	.
 	call	X0026		; 06d3 - 14 26	.&
 	orl	p2,#0x40	; 06d5 - 8a 40	.@
 	nop			; 06d7 - 00	.
@@ -947,16 +949,17 @@ X06bd:	mov	r0,#0x2f	; 06bd - b8 2f	8/
 	nop			; 06e1 - 00	.
 	call	X016b		; 06e2 - 34 6b	4k
 	orl	p2,#0x40	; 06e4 - 8a 40	.@
-romck_flipped0:
 	nop			; 06e6 - 00	.
 	jmp	romck_00fc	; 06e7 - 04 fc	.|
 ;
-X06e9:	orl	p2,#0x40	; 06e9 - 8a 40	.@
+romck_farcall_unbridge:
+	orl	p2,#0x40	; 06e9 - 8a 40	.@
 	nop			; 06eb - 00	.
 	call	selftest	; 06ec - d4 87	T.
 	orl	p2,#0x40	; 06ee - 8a 40	.@
 	nop			; 06f0 - 00	.
-X06f1:	orl	p2,#0x40	; 06f1 - 8a 40	.@
+farcall_15bb:
+	orl	p2,#0x40	; 06f1 - 8a 40	.@
 	nop			; 06f3 - 00	.
 ;
 	org	0x6f9
@@ -979,8 +982,8 @@ romck_06fd:
 ;
 	org	0x800
 ;
-set_A12_ret:
-	orl	p2,#0x40	; 0800 - 8a 40	.@	; set A12; call 1807, then ret to orig (block0)
+farcall_1807:
+	orl	p2,#0x40	; 0800 - 8a 40	.@	; set A12; call 1807, then ret to orig in page0
 	nop			; 0802 - 00	.
 	ret			; 0803 - 83	.
 ;
@@ -1044,12 +1047,12 @@ X0857:	mov	r0,#0x39	; 0857 - b8 39	89
 	call	memsetr2_r0	; 0860 - f4 09	t.
 	mov	r0,#0x55	; 0862 - b8 55	8U
 	mov	@r0,#0x14	; 0864 - b0 14	0.
-kp_call_a12:
-	call	set_A12_ret	; 0866 - 14 00	..
+kp_farcall_1807:
+	call	farcall_1807	; 0866 - 14 00	..
 	mov	r0,#0x21	; 0868 - b8 21	8!
 	mov	a,@r0		; 086a - f0	p
 	jb1	keypad_checkloop1; 086b - 32 6f	2o
-	jmp	kp_call_a12	; 086d - 04 66	.f
+	jmp	kp_farcall_1807	; 086d - 04 66	.f
 ;
 keypad_checkloop1:
 	anl	a,#0x1		; 086f - 53 01	S.	; : see also keypad loop @ 1118 !
@@ -1069,12 +1072,12 @@ kp_loop_top:
 	djnz	r1,kp_loop_top	; 087f - e9 76	iv
 	mov	r0,#0x24	; 0881 - b8 24	8$
 	mov	@r0,#0x0	; 0883 - b0 00	0.
-	jmp	kp_call_a12	; 0885 - 04 66	.f
+	jmp	kp_farcall_1807	; 0885 - 04 66	.f
 ;
 key_pressed?:
 	mov	r0,#0x24	; 0887 - b8 24	8$
 	mov	a,@r0		; 0889 - f0	p
-	jb7	kp_call_a12	; 088a - f2 66	rf
+	jb7	kp_farcall_1807	; 088a - f2 66	rf
 	mov	a,r7		; 088c - ff	.	; (r7 = p1)
 	jz	kp_initloop	; 088d - c6 72	Fr
 	mov	@r0,#0x80	; 088f - b0 80	0.
@@ -1088,14 +1091,14 @@ key_pressed?:
 	jmp	key_sgltrig?	; 089e - 24 38	$8
 ;
 key_up?:
-	jc	kp_call_a12	; 08a0 - f6 66	vf
+	jc	kp_farcall_1807	; 08a0 - f6 66	vf
 	mov	r3,#0x0		; 08a2 - bb 00	;.
 	clr	c		; 08a4 - 97	.
 	cpl	c		; 08a5 - a7	'
 	jmp	X08ad		; 08a6 - 04 ad	.-
 ;
 key_down?:
-	jc	kp_call_a12	; 08a8 - f6 66	vf
+	jc	kp_farcall_1807	; 08a8 - f6 66	vf
 	mov	r3,#0x99	; 08aa - bb 99	;.
 	clr	c		; 08ac - 97	.
 X08ad:	mov	r0,#0x3c	; 08ad - b8 3c	8<
@@ -1110,12 +1113,12 @@ X08b1:	mov	a,@r0		; 08b1 - f0	p
 	mov	@r0,#0x14	; 08ba - b0 14	0.
 	clr	c		; 08bc - 97	.
 keypad_a12ret:
-	call	set_A12_ret	; 08bd - 14 00	..
+	call	farcall_1807	; 08bd - 14 00	..
 	mov	a,#0xf		; 08bf - 23 0f	#.
 	outl	p1,a		; 08c1 - 39	9
 	in	a,p1		; 08c2 - 09	.
 	xrl	a,#0xf		; 08c3 - d3 0f	S.
-	jz	kp_call_a12	; 08c5 - c6 66	Ff	; j if no keys pressed
+	jz	kp_farcall_1807	; 08c5 - c6 66	Ff	; j if no keys pressed
 	mov	r0,#0x21	; 08c7 - b8 21	8!
 	mov	a,@r0		; 08c9 - f0	p
 	jb5	X08ce		; 08ca - b2 ce	2N
@@ -1793,7 +1796,7 @@ romck_0efc:
 	addc	a,r6		; 0f02 - 7e	~
 	mov	r6,a		; 0f03 - ae	.
 	sel	mb0		; 0f04 - e5	e
-	jmp	X06e9		; 0f05 - c4 e9	Di
+	jmp	romck_farcall_unbridge; 0f05 - c4 e9	Di
 ;
 memset5_r0:
 	mov	r2,#0x5		; 0f07 - ba 05	:.	; clr 5 bytes @r0
@@ -1973,7 +1976,7 @@ X1050:	orl	p2,#0x80	; 1050 - 8a 80	..
 	mov	r2,#0xc3	; 105b - ba c3	:C
 ; : UC ROM FAIL
 	call	syserr_r2	; 105d - 14 a9	.)
-X105f:	call	bridge_selftest	; 105f - d4 e9	Ti
+X105f:	call	farcall_selftest; 105f - d4 e9	Ti
 	mov	a,r5		; 1061 - fd	}
 	jz	X1066		; 1062 - c6 66	Ff
 	call	syserr_a	; 1064 - 14 aa	.*
@@ -2005,7 +2008,7 @@ X1081:	call	GPIB_init	; 1081 - b4 5c	4\
 	jz	X107e		; 1086 - c6 7e	F~
 	mov	r7,#0x8		; 1088 - bf 08	?.
 	call	GPIB_SPstat_r7	; 108a - 14 cb	.K
-X108c:	jmp	X16d0		; 108c - c4 d0	DP
+X108c:	jmp	farcall_0026	; 108c - c4 d0	DP
 ;
 X108e:	call	GPIB_intparsage	; 108e - 54 00	T.
 	call	X1106		; 1090 - 34 06	4.
@@ -2219,11 +2222,11 @@ keyjmp_97_AUTO:
 	jmp	X15b5		; 119f - a4 b5	$5
 ;
 keyjmp_a1_UP:
-	call	X16d5		; 11a1 - d4 d5	TU
+	call	farcall_015d	; 11a1 - d4 d5	TU
 	jmp	X11a7		; 11a3 - 24 a7	$'
 ;
 keyjmp_a5_DOWN:
-	call	X16da		; 11a5 - d4 da	TZ
+	call	farcall_0137	; 11a5 - d4 da	TZ
 X11a7:	mov	r0,#0x40	; 11a7 - b8 40	8@
 	mov	a,@r0		; 11a9 - f0	p
 	anl	a,#0xfd		; 11aa - 53 fd	S}
@@ -2518,7 +2521,7 @@ GPIB_BOh:
 GPIB_sendreading?:
 	mov	@r1,#0x40	; 1339 - b1 40	1@
 	mov	r1,#0x38	; 133b - b9 38	98
-	call	X16df		; 133d - d4 df	T_
+	call	farcall_016b	; 133d - d4 df	T_
 	anl	a,#0xf		; 133f - 53 0f	S.
 	add	a,#0xe6		; 1341 - 03 e6	.f
 	movp	a,@a		; 1343 - a3	#
@@ -3154,7 +3157,7 @@ romck_prepare:
 	clr	c		; 16a0 - 97	.
 	mov	r7,#0x0		; 16a1 - bf 00	?.
 X16a3:	call	romck_10fc	; 16a3 - 14 fc	.|
-	call	romck_flip0	; 16a5 - d4 e4	Td
+	call	romck_farcall_00fc; 16a5 - d4 e4	Td
 	djnz	r7,X16a3	; 16a7 - ef a3	o#
 	retr			; 16a9 - 93	.
 ;
@@ -3180,39 +3183,43 @@ clr_ram27_bit7:
 	mov	@r1,a		; 16c5 - a1	!
 	retr			; 16c6 - 93	.
 ;
+; a few far call "bridges" here
 	org	0x16d0
 ;
-X16d0:	anl	p2,#0xbf	; 16d0 - 9a bf	.?
+farcall_0026:
+	anl	p2,#0xbf	; 16d0 - 9a bf	.?	; inline return via 16d8
 	nop			; 16d2 - 00	.
 	retr			; 16d3 - 93	.
 ;
 	org	0x16d5
 ;
-X16d5:	anl	p2,#0xbf	; 16d5 - 9a bf	.?
+farcall_015d:
+	anl	p2,#0xbf	; 16d5 - 9a bf	.?
 	nop			; 16d7 - 00	.
 	jmp	X108e		; 16d8 - 04 8e	..
 ;
-X16da:	anl	p2,#0xbf	; 16da - 9a bf	.?
+farcall_0137:
+	anl	p2,#0xbf	; 16da - 9a bf	.?
 	nop			; 16dc - 00	.
 	ret			; 16dd - 83	.
 ;
 	org	0x16df
 ;
-X16df:	anl	p2,#0xbf	; 16df - 9a bf	.?
+farcall_016b:
+	anl	p2,#0xbf	; 16df - 9a bf	.?
 	nop			; 16e1 - 00	.
 	ret			; 16e2 - 83	.
 ;
 	org	0x16e4
 ;
-romck_flip0:
+romck_farcall_00fc:
 	anl	p2,#0xbf	; 16e4 - 9a bf	.?
 	nop			; 16e6 - 00	.
-ret_16e7:
 	ret			; 16e7 - 83	.
 ;
 	org	0x16e9
 ;
-bridge_selftest:
+farcall_selftest:
 	anl	p2,#0xbf	; 16e9 - 9a bf	.?
 	nop			; 16eb - 00	.
 	ret			; 16ec - 83	.
@@ -3355,7 +3362,7 @@ cal_toggle0:
 	ret			; 17de - 83	.
 ;
 X17df:	mov	r1,#0x3f	; 17df - b9 3f	9?
-	call	X16df		; 17e1 - d4 df	T_
+	call	farcall_016b	; 17e1 - d4 df	T_
 	anl	a,#0xf		; 17e3 - 53 0f	S.
 	mov	r0,#0x5e	; 17e5 - b8 5e	8^
 	mov	@r0,a		; 17e7 - a0	 
@@ -3379,13 +3386,13 @@ retr_17fb:
 ;
 	org	0x1800
 ;
-clr_A12_ret:
+ret_far_1807:
 	anl	p2,#0xbf	; 1800 - 9a bf	.?
 	nop			; 1802 - 00	.
 	call	X1807		; 1803 - 14 07	..
-	jmp	clr_A12_ret	; 1805 - 04 00	..
+	jmp	ret_far_1807	; 1805 - 04 00	..
 ;
-X1807:	mov	r0,#0x23	; 1807 - b8 23	8#
+X1807:	mov	r0,#0x23	; 1807 - b8 23	8#	; return from farcall_1807
 	mov	a,@r0		; 1809 - f0	p
 	jb5	X1817		; 180a - b2 17	2.
 	mov	r0,#0x55	; 180c - b8 55	8U
@@ -4074,7 +4081,7 @@ X1f2d:	sel	mb0		; 1f2d - e5	e
 	mov	a,r3		; 1f31 - fb	{
 	mov	r1,a		; 1f32 - a9	)
 	sel	mb0		; 1f33 - e5	e
-	call	X16df		; 1f34 - d4 df	T_
+	call	farcall_016b	; 1f34 - d4 df	T_
 	sel	mb1		; 1f36 - f5	u
 	anl	a,#0xf		; 1f37 - 53 0f	S.
 	rl	a		; 1f39 - e7	g

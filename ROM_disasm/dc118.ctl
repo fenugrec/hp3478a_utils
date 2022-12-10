@@ -77,7 +77,6 @@ l 054e readcal_bot_r6
 ! 067c test calRAM read/write ?
 l 0687 selftest
 ! 0687 does CAL_test(r5=errno), then AD LINK test (r3=errno), AD TEST (r4=errno), 
-l 16e9 bridge_selftest
 # 069f: 0xc5= UNCALIBRATED
 # 06b7: AD TEST FAIL
 # 06bb: AD LINK FAIL
@@ -111,9 +110,7 @@ l 061D rx_8bitloop
 ! 0651 read keypad (useless?)
 ! 0659 get DIPswitch (useless?)
 l 06bb seterr_AD_LINK
-l 0800 set_A12_ret
-! 0800 set A12; call 1807, then ret to orig (block0)
-l 0866 kp_call_a12
+l 0866 kp_farcall_1807
 l 086f keypad_checkloop1
 ! 086f: see also keypad loop @ 1118 !
 l 0872 kp_initloop
@@ -409,8 +406,8 @@ l 1a0f pulse_dispck
 
 ;**** rom checksum stuff
 l 169e romck_prepare
-l 16e4 romck_flip0
-l 06e6 romck_flipped0
+l 16e4 romck_farcall_00fc
+l 06e9 romck_farcall_unbridge
 l 00fc romck_00fc
 l 02fc romck_02fc
 l 04fc romck_04fc
@@ -446,7 +443,6 @@ L 112d retr_112d
 L 1196 retr_1196
 L 1232 retr_1232
 L 16bb retr_16bb
-L 16e7 ret_16e7
 L 1739 retr_1739
 L 17fb retr_17fb
 L 1889 retr_1889
@@ -516,7 +512,6 @@ l 168c rotl_annun8
 l 17da cal_toggle0
 ! 17da toggle calram[0] and ret a + set carry if calram was writeable
 l 17e9 sub_17E9
-l 1800 clr_A12_ret
 ! 1a24 blink last digit point ?
 l 1a4c _cal_toggle0
 ! 1a4c toggle calram[0] and ret a
@@ -701,8 +696,9 @@ b 1ff3-1ffa
 
 ! 1fff probable dummy byte to bring checksum == 0 (see romck_prepare)
 b 1fff
-;************* forced bank selection
-;i.e. force sel mb0 / mb1
+;************* forced bank selection and banking
+;- force sel mb0 / mb1
+;- software-controlled bank switching (via pin P26)
 m 0 1001
 m 1 135e
 m 1 1365
@@ -729,3 +725,29 @@ m 0 19fa
 m 0 1a6b
 m 0 1e13
 m 1 1f13
+
+# 06d0 a few far call "bridges" here
+c 06d2
+
+l 06f1 farcall_15bb
+
+l 0800 farcall_1807
+! 0800 set A12; call 1807, then ret to orig in page0
+
+# 16d0 a few far call "bridges" here
+
+l 16d0 farcall_0026
+! 16d0 inline return via 16d8
+
+l 16d5 farcall_015d
+
+l 16da farcall_0137
+
+l 16df farcall_016b
+
+; l 16e4 already labelled (rom checksum funcs)
+
+l 16e9 farcall_selftest
+
+l 1800 ret_far_1807
+! 1807 return from farcall_1807
