@@ -70,7 +70,7 @@ l 0204 check_calentr_a
 # 04ad parse cal gain constant
 # 0506 this section seems to parse the cal constant pointed by r7;
 # 0506 if the first digit is 8 or 9, the # is negative ?
-l 0506 readcal_r7_sign?
+l 0506 readcal_math_0506
 ! 0506 i: r7=cal_addr, r4=sizeof(val?),r6=?. (movx setup for CALRAM)
 ! 050d if (a > 8) ?
 l 054e readcal_bot_r6
@@ -116,14 +116,14 @@ l 086f keypad_checkloop1
 l 0872 kp_initloop
 l 0876 kp_loop_top
 ! 0879 r7 = p1_read
-l 0887 key_pressed?
+l 0887 key_pressed
 ! 088c (r7 = p1)
-l 08a0 key_up?
-l 08a8 key_down?
+l 08a0 key_up
+l 08a8 key_down
 l 08bd keypad_a12ret
 ! 08c5 j if no keys pressed
 l 08f6 keyparse_cont1
-l 0938 key_sgltrig?
+l 0938 key_sgltrig
 l 0acc call_printcal_r2
 l 0aee keyparse_cont1b
 L 0B06 BCDstuff_0B06
@@ -135,7 +135,7 @@ L 0D6A BCDstuff_0D6a
 ! 0d6a not sure. i: r0=caladdr, r1=&dest[3], 
 L 0d82 readcal_daa
 ! 0D82 do some BCD adj on read nib. i: r0=addr--; o: ret a
-l 0d97 BCD_div?
+l 0d97 BCD_div_maybe
 # 0d97 fixed cal58 /= (cal2C * 10) ???
 # 0da2 loop 8 times
 # 0da6 loop 0x0A times
@@ -206,7 +206,7 @@ l 12c8 GPIB_RXalpha
 ! 12c8 a = rxb - 0x41
 l 1251 GPIB_ISR1_BI
 l 12f0 GPIB_ISR1_BO
-l 1339 GPIB_sendreading?
+l 1339 GPIB_sendreading_maybe
 ! 00BC GPIB_CS
 ! 00C2 AUXMODE=4 trig
 ! 00C4 GPIB_release
@@ -374,8 +374,8 @@ l 1868 disp_update
 l 1881 _clrpwo_ret
 l 1906 disp_setpwo
 ! 1906 if (!f1) : clr pwo then set pwo, sync=0
-l 1917 disp_init?
-l 1937 disp_writeannuns?
+l 1917 disp_init_maybe
+l 1937 disp_writeannuns_maybe
 l 194a disp_write12h
 ! 194a write 12 MSnibs from from iRAM[4F] backwards : iRAM[44..4F])
 l 195e disp_write12l
@@ -577,7 +577,7 @@ l 037B calstr_7B
 # 037B INVALID ZERO
 B 0306-0387
 
-l 04db tbl_spstatus?
+l 04db tbl_spstatus_maybe
 b 04db-04e3
 
 b 0e0f-0e40

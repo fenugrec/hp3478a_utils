@@ -1,6 +1,6 @@
 ;
 ;  D48 V3.5.0 8048 Disassembly of ../../dc118.bin
-;  2022/12/10 18:59
+;  2022/12/13 22:42
 ;
 ; Do not edit this .d48 file, as changes will be lost when re-running d48 !
 ;
@@ -603,7 +603,7 @@ X0492:	inc	r1		; 0492 - 19	.	; copy cal2C[] to iram[33][4]
 	clr	f0		; 04aa - 85	.
 	mov	r3,#0x65	; 04ab - bb 65	;e
 ; parse cal gain constant
-	jmp	readcal_r7_sign?; 04ad - a4 06	$.
+	jmp	readcal_math_0506; 04ad - a4 06	$.
 ;
 X04af:	mov	r7,a		; 04af - af	/
 	movp	a,@a		; 04b0 - a3	#
@@ -639,7 +639,7 @@ rd_spstat_tbl:
 	mov	r7,a		; 04d8 - af	/
 	jmp	GPIB_SPstuff	; 04d9 - 84 00	..
 ;
-tbl_spstatus?:
+tbl_spstatus_maybe:
 	db	0x61,0x20,0x8,0x0,0x1,0x8,0x6e,0x8	; 04db a ....n.
 	db	0x8					; 04e3 .
 ;
@@ -658,7 +658,7 @@ romck_04fc:
 ;
 ; this section seems to parse the cal constant pointed by r7;
 ; if the first digit is 8 or 9, the # is negative ?
-readcal_r7_sign?:
+readcal_math_0506:
 	jf0	X0509		; 0506 - b6 09	6.	; i: r7=cal_addr, r4=sizeof(val?),r6=?. (movx setup for CALRAM)
 	dec	r4		; 0508 - cc	L
 X0509:	cpl	f0		; 0509 - 95	.
@@ -725,7 +725,7 @@ X0554:	xch	a,@r1		; 0554 - 21	!
 	xchd	a,@r1		; 0556 - 31	1
 	inc	r1		; 0557 - 19	.
 	djnz	r2,X0554	; 0558 - ea 54	jT
-	jmp	readcal_r7_sign?; 055a - a4 06	$.
+	jmp	readcal_math_0506; 055a - a4 06	$.
 ;
 isol_synctx:
 	mov	r0,#0x40	; 055c - b8 40	8@	; sends 2 bytes from iRAM[0x3F?], MSB first, clr F1 if ok
@@ -1066,7 +1066,7 @@ kp_loop_top:
 	in	a,p1		; 0878 - 09	.
 	xch	a,r7		; 0879 - 2f	/	; r7 = p1_read
 	xrl	a,r7		; 087a - df	_
-	jnz	key_pressed?	; 087b - 96 87	..
+	jnz	key_pressed	; 087b - 96 87	..
 	mov	a,r7		; 087d - ff	.
 	rr	a		; 087e - 77	w
 	djnz	r1,kp_loop_top	; 087f - e9 76	iv
@@ -1074,7 +1074,7 @@ kp_loop_top:
 	mov	@r0,#0x0	; 0883 - b0 00	0.
 	jmp	kp_farcall_1807	; 0885 - 04 66	.f
 ;
-key_pressed?:
+key_pressed:
 	mov	r0,#0x24	; 0887 - b8 24	8$
 	mov	a,@r0		; 0889 - f0	p
 	jb7	kp_farcall_1807	; 088a - f2 66	rf
@@ -1083,21 +1083,20 @@ key_pressed?:
 	mov	@r0,#0x80	; 088f - b0 80	0.
 	mov	a,r7		; 0891 - ff	.
 	xrl	a,#0xbd		; 0892 - d3 bd	S=
-	jz	key_up?		; 0894 - c6 a0	F 
+	jz	key_up		; 0894 - c6 a0	F 
 	xrl	a,#0x6		; 0896 - d3 06	S.
-	jz	key_down?	; 0898 - c6 a8	F(
+	jz	key_down	; 0898 - c6 a8	F(
 	xrl	a,#0xc5		; 089a - d3 c5	SE
 	jnz	keyparse_cont1	; 089c - 96 f6	.v
-	jmp	key_sgltrig?	; 089e - 24 38	$8
+	jmp	key_sgltrig	; 089e - 24 38	$8
 ;
-key_up?:
-	jc	kp_farcall_1807	; 08a0 - f6 66	vf
+key_up:	jc	kp_farcall_1807	; 08a0 - f6 66	vf
 	mov	r3,#0x0		; 08a2 - bb 00	;.
 	clr	c		; 08a4 - 97	.
 	cpl	c		; 08a5 - a7	'
 	jmp	X08ad		; 08a6 - 04 ad	.-
 ;
-key_down?:
+key_down:
 	jc	kp_farcall_1807	; 08a8 - f6 66	vf
 	mov	r3,#0x99	; 08aa - bb 99	;.
 	clr	c		; 08ac - 97	.
@@ -1192,14 +1191,14 @@ X0921:	xch	a,@r1		; 0921 - 21	!
 	djnz	r2,X090e	; 0926 - ea 0e	j.
 	mov	@r1,#0x0	; 0928 - b1 00	1.
 	jf0	X094c		; 092a - b6 4c	6L
-	jc	key_sgltrig?	; 092c - f6 38	v8
+	jc	key_sgltrig	; 092c - f6 38	v8
 	mov	r0,#0x3a	; 092e - b8 3a	8:
 	mov	a,@r0		; 0930 - f0	p
 	add	a,#0xcf		; 0931 - 03 cf	.O
 	add	a,#0x28		; 0933 - 03 28	.(
 X0935:	jnc	X0957		; 0935 - e6 57	fW
 	clr	c		; 0937 - 97	.
-key_sgltrig?:
+key_sgltrig:
 	mov	r0,#0x57	; 0938 - b8 57	8W
 	jf0	X0944		; 093a - b6 44	6D
 	mov	@r0,#0x19	; 093c - b0 19	0.
@@ -1321,7 +1320,7 @@ X0a89:	mov	a,@r0		; 0a89 - f0	p
 	inc	r1		; 0a8f - 19	.
 	djnz	r2,X0a89	; 0a90 - ea 89	j.
 	mov	@r1,#0x0	; 0a92 - b1 00	1.
-	call	BCD_div?	; 0a94 - b4 97	4.
+	call	BCD_div_maybe	; 0a94 - b4 97	4.
 	jf1	print_VALUEERR	; 0a96 - 76 b4	v4
 	call	BCDstuff_0B06	; 0a98 - 74 06	t.
 	jf1	print_VALUEERR	; 0a9a - 76 b4	v4
@@ -1490,7 +1489,7 @@ X0c15:	mov	r0,#0x2c	; 0c15 - b8 2c	8,
 	call	memset5_r0	; 0c3b - f4 07	t.
 	mov	r0,#0x2d	; 0c3d - b8 2d	8-
 	mov	@r0,#0x90	; 0c3f - b0 90	0.
-	call	BCD_div?	; 0c41 - b4 97	4.
+	call	BCD_div_maybe	; 0c41 - b4 97	4.
 	jf1	X0cd0		; 0c43 - 76 d0	vP
 	mov	r0,#0x44	; 0c45 - b8 44	8D
 	mov	r1,#0x58	; 0c47 - b9 58	9X
@@ -1529,7 +1528,7 @@ X0c75:	mov	a,@r0		; 0c75 - f0	p
 	dec	r1		; 0c7a - c9	I
 	djnz	r2,X0c75	; 0c7b - ea 75	ju
 	mov	@r1,#0x0	; 0c7d - b1 00	1.
-	call	BCD_div?	; 0c7f - b4 97	4.
+	call	BCD_div_maybe	; 0c7f - b4 97	4.
 	jf1	X0cd0		; 0c81 - 76 d0	vP
 	call	BCDstuff_0B06	; 0c83 - 74 06	t.
 	jf1	X0cd0		; 0c85 - 76 d0	vP
@@ -1631,7 +1630,7 @@ X0d29:	xch	a,@r1		; 0d29 - 21	!
 ; 0x18 = &entry01_gain[5] (entry 01 : 300mV DC)
 	mov	r1,#0x30	; 0d33 - b9 30	90
 	call	BCDstuff_0D6a	; 0d35 - b4 6a	4j
-	call	BCD_div?	; 0d37 - b4 97	4.
+	call	BCD_div_maybe	; 0d37 - b4 97	4.
 	jf1	print_ACIVALERR	; 0d39 - 76 d5	vU
 	call	BCDstuff_0B06	; 0d3b - 74 06	t.
 	jf1	print_ACIVALERR	; 0d3d - 76 d5	vU
@@ -1705,7 +1704,7 @@ X0d93:	add	a,#0xa		; 0d93 - 03 0a	..
 	ret			; 0d96 - 83	.
 ;
 ; fixed cal58 /= (cal2C * 10) ???
-BCD_div?:
+BCD_div_maybe:
 	mov	r0,#0x44	; 0d97 - b8 44	8D
 	mov	r2,#0x8		; 0d99 - ba 08	:.
 	call	memsetr2_r0	; 0d9b - f4 09	t.	; 0x44[0..7]=0
@@ -2514,11 +2513,11 @@ GPIB_BOh:
 	mov	r1,#0x27	; 132f - b9 27	9'
 	mov	a,@r1		; 1331 - f1	q
 	jb6	X1395		; 1332 - d2 95	R.
-	jb7	GPIB_sendreading?; 1334 - f2 39	r9
+	jb7	GPIB_sendreading_maybe; 1334 - f2 39	r9
 	mov	a,@r0		; 1336 - f0	p
 	jmp	X1221		; 1337 - 44 21	D!
 ;
-GPIB_sendreading?:
+GPIB_sendreading_maybe:
 	mov	@r1,#0x40	; 1339 - b1 40	1@
 	mov	r1,#0x38	; 133b - b9 38	98
 	call	farcall_016b	; 133d - d4 df	T_
@@ -3446,7 +3445,7 @@ X1847:	mov	r0,#0x54	; 1847 - b8 54	8T
 _loc1852:
 	jnc	X1858		; 1852 - e6 58	fX
 X1854:	call	disp_setpwo	; 1854 - 34 06	4.
-	call	disp_writeannuns?; 1856 - 34 37	47
+	call	disp_writeannuns_maybe; 1856 - 34 37	47
 X1858:	mov	r0,#0x55	; 1858 - b8 55	8U
 	mov	a,@r0		; 185a - f0	p
 	jb6	X1873		; 185b - d2 73	Rs
@@ -3465,8 +3464,8 @@ disp_update:
 	sel	mb1		; 186b - f5	u
 	clr	f1		; 186c - a5	%
 	call	disp_setpwo	; 186d - 34 06	4.
-	call	disp_init?	; 186f - 34 17	4.
-	call	disp_writeannuns?; 1871 - 34 37	47
+	call	disp_init_maybe	; 186f - 34 17	4.
+	call	disp_writeannuns_maybe; 1871 - 34 37	47
 X1873:	call	disp_setpwo	; 1873 - 34 06	4.
 	call	disp_write12h	; 1875 - 34 4a	4J
 	mov	r0,#0x55	; 1877 - b8 55	8U
@@ -3586,7 +3585,7 @@ disp_setpwo:
 	mov	r2,#0x2e	; 1913 - ba 2e	:.
 	jmp	pulse_dispck_r2	; 1915 - 44 02	D.
 ;
-disp_init?:
+disp_init_maybe:
 	mov	a,#0xfc		; 1917 - 23 fc	#|
 	call	disp_sendib	; 1919 - 34 7a	4z
 	mov	a,#0xfd		; 191b - 23 fd	#}
@@ -3604,7 +3603,7 @@ disp_init?:
 	anl	p2,#0xfd	; 1933 - 9a fd	.}
 	jmp	pulse_dispck44	; 1935 - 44 00	D.
 ;
-disp_writeannuns?:
+disp_writeannuns_maybe:
 	mov	a,#0xbc		; 1937 - 23 bc	#<
 	call	disp_sendib	; 1939 - 34 7a	4z
 	mov	r0,#0x53	; 193b - b8 53	8S
