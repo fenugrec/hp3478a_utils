@@ -54,7 +54,13 @@ for line in file(fname.absolutePath):  # note, cannot use open(), since that is 
 	type = pieces[0]
 	address = toAddr(pieces[1])
 
-	#print repr(text)
+	if type[0] not in "l!#":
+		#skip lines not starting with recognized types
+		continue
+
+	if address is None:
+		print("problem with line {}".format(pieces))
+		continue
 
 	if type == "l":
 		#print("Created label {} @ {}".format(text, address))
