@@ -77,11 +77,11 @@ l 054e readcal_bot_r6
 ! 067c test calRAM read/write ?
 l 0687 selftest
 ! 0687 does CAL_test(r5=errno), then AD LINK test (r3=errno), AD TEST (r4=errno), 
-# 069f: 0xc5= UNCALIBRATED
-# 06b7: AD TEST FAIL
-# 06bb: AD LINK FAIL
-# 105d: UC ROM FAIL
-# 10a5: UC RAM FAIL
+# 069f 0xc5= UNCALIBRATED
+# 06b7 AD TEST FAIL
+# 06bb AD LINK FAIL
+# 105d UC ROM FAIL
+# 10a5 UC RAM FAIL
 # 0a3b update cal offset[6] + checksum
 # 0a68 read cal offset[6] to iRAM[2C], PBCD
 # 0aa5 update cal gain[5] + checksum
@@ -112,7 +112,7 @@ l 061D rx_8bitloop
 l 06bb seterr_AD_LINK
 l 0866 kp_farcall_1807
 l 086f keypad_checkloop1
-! 086f: see also keypad loop @ 1118 !
+! 086f see also keypad loop @ 1118 !
 l 0872 kp_initloop
 l 0876 kp_loop_top
 ! 0879 r7 = p1_read
