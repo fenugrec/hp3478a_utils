@@ -1,9 +1,10 @@
 This is my WIP annotated disassembly of ROM dump "03478-65501_dc118" available from ko4bb.
 
 
-rom_dc118.lst was produced by dasmx and hand-annotated. This works ok but I got tired of doing fixups manually.
-dc118.ctl is the more complete resource, and is meant to be used with d48.
+dc118.ctl is the "master" control file, and is meant to be used with d48 to generate the processed disasm.
+
 Note, I have modified d48 to deal with >0x1000 addresses better. see d48_4k.patch
+
 My workflow was thus :
 1- generate listing with d48
 2- analyze, take notes

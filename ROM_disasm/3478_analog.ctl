@@ -5,6 +5,8 @@
 ;
 ; command : d48 -d -n -b <filename>
 ; (-n gives 0x.. constants instead of ..h)
+;
+; Note : the disasm in ghidra is now (2022/12) better commented and analyzed, except for the movp tables
 
 
 ;********* command prefixes:
