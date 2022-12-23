@@ -63,11 +63,11 @@ for line in file(fname.absolutePath):  # note, cannot use open(), since that is 
 		continue
 
 	if type == "l":
-		#print("Created label {} @ {}".format(text, address))
+		print("Created label {} @ {}".format(text, address))
 		createLabel(address, text, False)
 	elif type == "!":
-		#print("comment @ {}: {}".format(address, text))
+		print("comment @ {}: {}".format(address, text))
 		setEOLComment(address, text)
 	elif type == "#":
-		#print("plate comment @ {}: {}".format(address, text))
+		print("plate comment @ {}: {}".format(address, text))
 		setPreComment(address, text)
