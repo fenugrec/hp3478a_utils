@@ -63,8 +63,9 @@ for line in file(fname.absolutePath):  # note, cannot use open(), since that is 
 		continue
 
 	if type == "l":
-		print("Created label {} @ {}".format(text, address))
-		createLabel(address, text, False)
+		clean_label = text.split()[0]
+		print("Created label {} @ {}".format(clean_label, address))
+		createLabel(address, clean_label, False)
 	elif type == "!":
 		print("comment @ {}: {}".format(address, text))
 		setEOLComment(address, text)
