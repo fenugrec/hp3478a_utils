@@ -343,7 +343,7 @@ L 1600 dip_parse
 ! 1611 get DIP setting
 l 16c0 clr_ram27_bit7
 l 18ad render_reading
-l 18dc pad display with spaces
+! 18dc pad display with spaces
 l 1d06 append_optsign_r6
 l 1d11 append_space
 l 1d15 append_sign_r1
