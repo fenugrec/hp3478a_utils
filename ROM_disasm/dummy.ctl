@@ -8,3 +8,5 @@ l 16d0 farcall_0026
 
 ! 16d1: malformed address
 l 16d2 whitespace in label
+
+L 0f2e uppercase_label

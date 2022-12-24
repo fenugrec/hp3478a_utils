@@ -51,7 +51,7 @@ for line in file(fname.absolutePath):  # note, cannot use open(), since that is 
 	except IndexError:
 		continue
 
-	type = pieces[0]
+	type = pieces[0].lower()
 	address = toAddr(pieces[1])
 
 	if type[0] not in "l!#":
