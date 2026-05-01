@@ -136,12 +136,12 @@ class limits_1y():
 
 def step2(dmm, cal, limits, point=None):
     print('\n******** STEP 2 DCV ********')
-    print('\n******** CAUTION up to 300V on terminals ! ********')
+    print('******** CAUTION up to 300V on terminals ! ********')
+    print('******** wiring for 4-wire sense : DUT_L => CAL_FL, CAL_SL')
     input("-------- press Enter when ready ---------")
     logf.debug('\n STEP 2')
     cal.disable()
-    cal.mode_dcv()
-    cal.set_v(0)
+    cal.set_dcv(0)
     print_result_header()
     points = limits.dcv_limits
     if point in range(0, len(points)):
@@ -153,7 +153,7 @@ def step2(dmm, cal, limits, point=None):
         dmm.range_dcv(r)
         if pvstep.extra_mode:
             dmm.write(pvstep.extra_mode)
-        cal.set_v(target)
+        cal.set_dcv(target)
         cal.enable()
         sleep(cfg.pv.step_dwell)
         dmm_rdg = read_multi(dmm.get_rdg, cfg.pv.discard, cfg.pv.keep, logf.debug, 'dut').median
@@ -198,12 +198,12 @@ def main():
 
     if testmode:
         dmm = dmm_3478(pyvisa_dummy('dmm_dummy'))
-        calsource = caldummy()
+        calsource = cal_mfc(pyvisa_dummy('dmm_dummy'))
         logf.setLevel(logging.DEBUG)
     else:
         rm = pyvisa.ResourceManager()
-        dmm_res = rm.open_resource(cfg.dmm.res)
-        dmm = dmm_3478(dmm_res)
+        dmm = dmm_3478(rm.open_resource(cfg.dut.res))
+        calsource = cal_mfc(rm.open_resource(cfg.calsource.res))
         logf.setLevel(logging.INFO)
 
     ## start cal process
@@ -216,7 +216,7 @@ def main():
     steps = calsteps
     if args.step in range(2, len(calsteps)+1):
         steps = [calsteps[args.step]]
-        print(f'Running only step {steps}')
+        print(f'Running only step {args.step}')
 
     for s in steps:
         s(dmm, calsource, limits_1y, point)

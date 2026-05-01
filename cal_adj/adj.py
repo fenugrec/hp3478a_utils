@@ -69,9 +69,12 @@ def adj_dcv(dmm, cal, point=None):
     if point in range(0, len(points)):
         points = [points[point]]
     for ap in points:
+        r = ap.range
         logf.info(f'adjusting range {r}')
         dmm.range_dcv(r)
+        cal.set_v(0)
         cal.enable()
+        input('--------- optional: apply short, enter when done')
         sleep(cfg.pv.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
@@ -79,7 +82,9 @@ def adj_dcv(dmm, cal, point=None):
         cal.set_v(target)
         sleep(cfg.pv.step_dwell)
         # assume calibrator is applying exact value
-        dmm.write(f'D2+{ap.range:.5g}')
+        dmm.write(f'D2+{r:.5g}')
+        dmm.write('C')
+        input('--------- wait for "CAL FINISHED", enter when done')
         cal.disable()
 
 
@@ -116,12 +121,12 @@ def step2(dmm, cal, limits, point=None):
 calsteps = [None, None, step2, ]
 
 def main():
-    parser = argparse.ArgumentParser(description="hp 3478a performance verif")
+    parser = argparse.ArgumentParser(description="hp 3478a calibration (adjustment)")
     parser.add_argument('-c', '--cfg', type=argparse.FileType('r'), required=True, help='config file')
     parser.add_argument('-s', '--step', type=int, help='run only step #')
     parser.add_argument('-p', '--point', type=int, help='run only one cal point (use with -s)')
     parser.add_argument('-t', action='store_true', help='test mode (dev)')
-    parser.add_argument('-l', '--log', default='pv_tmp.log', help='output log file')
+    parser.add_argument('-l', '--log', default='cal.log', help='output log file')
     args = parser.parse_args(sys.argv[1:])
 
     global cfg
@@ -147,12 +152,12 @@ def main():
 
     if testmode:
         dmm = dmm_3478(pyvisa_dummy('dmm_dummy'))
-        calsource = caldummy()
+        calsource = cal_mfc(pyvisa_dummy('dmm_dummy'))
         logf.setLevel(logging.DEBUG)
     else:
         rm = pyvisa.ResourceManager()
-        dmm_res = rm.open_resource(cfg.dmm.res)
-        dmm = dmm_3478(dmm_res)
+        dmm = dmm_3478(rm.open_resource(cfg.dut.res))
+        calsource = cal_mfc(rm.open_resource(cfg.calsource.res))
         logf.setLevel(logging.INFO)
 
     ## start cal process

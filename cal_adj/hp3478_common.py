@@ -12,15 +12,19 @@ from statistics import median, stdev
 # thin wrapper, could be even thinner
 class dmm_3478():
     def __init__(self, pyvisa_res):
+        self.logf = logging.getLogger()
         self.dmm = pyvisa_res
         return
 #write command or stuff
     def write(self, s):
+        self.logf.debug(f'dut: write "{s}"')
         self.dmm.write(s)
         return
 #get single reading
     def get_rdg(self):
-        return self.dmm.read_ascii_values()[0]
+        rdg=self.dmm.read_ascii_values()[0]
+        self.logf.debug(f'dut: read {rdg}')
+        return rdg
     def config_basic(self):
         self.dmm.write('N5T1Z1')    #5digit, trig int., autozero
         return
