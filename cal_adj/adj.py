@@ -13,6 +13,10 @@
 # - general config is held in external pv.conf to ideally avoid having to edit this script at all
 
 # TODO :
+# - read f/r switch
+# - check errors
+# - check cal switch status
+# - find a way to poll cal progress ? nothing obvious in 'binary status' bytes
 
 import pyvisa
 import argparse
@@ -47,10 +51,12 @@ def print_result(range, tgt, rdg, delta, tol):
 @dataclass
 class calstep():
     range: float
+    val: float = None   #actual value of Ohms std
     freq: float = 0 # for AC ranges
     extra_mode: str = None  # optional config like AZ off, 3/4/5 digit etc
     config_dwell: str = None   #if set, will query .conf for given string and use its value. Only for I stuff
 
+mfc_r_root=1.9
 class calpoints():
     dcv = [
             calstep(30e-3),
@@ -59,11 +65,24 @@ class calpoints():
             calstep(30),
             calstep(300),
             ]
+    # dci, acv, aci a bit weird, no point in having a table
+    r = [
+            calstep(3e1, mfc_r_root*1e1),
+            calstep(3e2, mfc_r_root*1e2),
+            calstep(3e3, mfc_r_root*1e3),
+            calstep(3e4, mfc_r_root*1e4),
+            calstep(3e5, mfc_r_root*1e5),
+            calstep(3e6, mfc_r_root*1e6),
+            calstep(3e7, mfc_r_root*1e7),
+            ]
 
 def adj_dcv(dmm, cal, point=None):
+    print('\n******** DCV ********')
+    print('******** CAUTION up to 300V on terminals ! ********')
+    print('******** wiring for 4-wire sense : DUT_L => CAL_FL, CAL_SL')
+    input("-------- press Enter when ready ---------")
     cal.disable()
-    cal.mode_dcv()
-    cal.set_v(0)
+    cal.set_dcv(0)
     dmm.config_basic()
     points = calpoints.dcv
     if point in range(0, len(points)):
@@ -72,53 +91,66 @@ def adj_dcv(dmm, cal, point=None):
         r = ap.range
         logf.info(f'adjusting range {r}')
         dmm.range_dcv(r)
-        cal.set_v(0)
+        cal.set_dcv(0)
         cal.enable()
         input('--------- optional: apply short, enter when done')
         sleep(cfg.pv.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
         input('--------- observe "CALIBRATING", enter when done')
-        cal.set_v(target)
+        cal.set_dcv(r)
         sleep(cfg.pv.step_dwell)
         # assume calibrator is applying exact value
         dmm.write(f'D2+{r:.5g}')
         dmm.write('C')
         input('--------- wait for "CAL FINISHED", enter when done')
         cal.disable()
+    return
 
-
-def step2(dmm, cal, limits, point=None):
-    print('\n******** STEP 2 DCV ********')
-    print('\n******** CAUTION up to 300V on terminals ! ********')
-    input("-------- press Enter when ready ---------")
-    logf.debug('\n STEP 2')
+def adj_dci(dmm, cal, point=None):
+    print('\n******** DCI up to 1A ********')
+    input("-------- disconnect dmm, press Enter ")
     cal.disable()
-    cal.mode_dcv()
-    cal.set_v(0)
-    print_result_header()
-    points = limits.dcv_limits
-    if point in range(0, len(points)):
-        points = [points[point]]
-    for pvstep in points:
-        r = pvstep.range
-        target = pvstep.target
-        dmm.config_basic()
-        dmm.range_dcv(r)
-        if pvstep.extra_mode:
-            dmm.write(pvstep.extra_mode)
-        cal.set_v(target)
-        cal.enable()
-        sleep(cfg.pv.step_dwell)
-        dmm_rdg = read_multi(dmm.get_rdg, cfg.pv.discard, cfg.pv.keep, logf.debug, 'dut').median
-        cal.disable()
-        delta = dmm_rdg - target
-        print_result(r, target, dmm_rdg, delta, pvstep.tol)
+    dmm.config_basic()
+    dmm.range_dci(0.3)
+    sleep(cfg.pv.step_dwell)
+    dmm.write('D2+000000')
+    dmm.write('C')
+    input("-------- wait for something, press enter")
+    dmm.range_dci(3)
+    sleep(cfg.pv.step_dwell)
+    dmm.write('D2+000000')
+    dmm.write('C')
+    input("-------- wait for 0 on 3A, press enter")
+    dmm.range_dci(0.3)
+    cal.set_dci(0.1)
+    cal.enable()
+    sleep(cfg.pv.step_dwell)
+    dmm.write('D2+0.100000')
+    dmm.write('C')
+    input("-------- wait for 100m, press enter")
+    dmm.range_dci(3)
+    cal.set_dci(1)
+    sleep(cfg.pv.step_dwell)
+    dmm.write('D2+1.00000')
+    dmm.write('C')
+    input("-------- wait for 1A, press enter")
+    cal.disable()
+    return
+
+def adj_acv(dmm, cal, point=None):
+    return
+
+def adj_aci(dmm, cal, point=None):
+    print('ACI cal normally not needed. skipping')
+    return
+
+def adj_r(dmm, cal, point=None):
     return
 
 
 # gather calsteps together
-calsteps = [None, None, step2, ]
+calsteps = [None, None, adj_dcv, adj_dci, adj_acv, adj_aci, adj_r]
 
 def main():
     parser = argparse.ArgumentParser(description="hp 3478a calibration (adjustment)")
