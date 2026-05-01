@@ -80,8 +80,8 @@ def adj_dcv(dmm, cal, point=None):
     print('\n******** DCV ********')
     print('******** CAUTION up to 300V on terminals ! ********')
     print('******** wiring for 4-wire sense : DUT_L => CAL_FL, CAL_SL')
-    input("-------- press Enter when ready ---------")
     cal.disable()
+    input("-------- press Enter when ready ---------")
     cal.set_dcv(0)
     dmm.config_basic()
     points = calpoints.dcv
@@ -109,8 +109,8 @@ def adj_dcv(dmm, cal, point=None):
 
 def adj_dci(dmm, cal, point=None):
     print('\n******** DCI up to 1A ********')
-    input("-------- disconnect dmm, press Enter ")
     cal.disable()
+    input("-------- disconnect dmm, press Enter ")
     dmm.config_basic()
     dmm.range_dci(0.3)
     sleep(cfg.pv.step_dwell)
@@ -121,7 +121,7 @@ def adj_dci(dmm, cal, point=None):
     sleep(cfg.pv.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
-    input("-------- wait for 0 on 3A, press enter")
+    input("-------- wait for 0 on 3A, then connect dut to cal, press enter")
     dmm.range_dci(0.3)
     cal.set_dci(0.1)
     cal.enable()
@@ -138,7 +138,20 @@ def adj_dci(dmm, cal, point=None):
     cal.disable()
     return
 
+# SM says, only one signal, 3V 1kHz
 def adj_acv(dmm, cal, point=None):
+    print('\n******** ACV ********')
+    cal.disable()
+    input("-------- connect 4-wire sense to dut")
+    dmm.config_basic()
+    dmm.range_acv(3)
+    cal.set_acv(3, 1e3)
+    cal.enable()
+    sleep(cfg.pv.step_dwell)
+    dmm.write('D2+3.0000')
+    dmm.write('C')
+    input("-------- wait for something, press enter")
+    cal.disable()
     return
 
 def adj_aci(dmm, cal, point=None):
@@ -146,6 +159,34 @@ def adj_aci(dmm, cal, point=None):
     return
 
 def adj_r(dmm, cal, point=None):
+    print('\n******** R (4w) ********')
+    print('******** wiring for 4-wire sense')
+    cal.disable()
+    input("-------- press Enter when ready ---------")
+    cal.set_r(0)
+    dmm.config_basic()
+    dmm.range_r4(30)
+    points = calpoints.r
+    if point in range(0, len(points)):
+        points = [points[point]]
+    for ap in points:
+        r = ap.range
+        val = ap.val
+        logf.info(f'adjusting range {r} with nominal {val}')
+        dmm.range_r4(r)
+        cal.enable()
+        input('--------- optional: apply short, enter when done')
+        sleep(cfg.pv.step_dwell)
+        dmm.write('D2+000000')
+        dmm.write('C')
+        input('--------- observe "CALIBRATING", enter when done')
+        cal.set_r(val)
+        sleep(cfg.pv.step_dwell)
+        # assume calibrator is applying exact value
+        dmm.write(f'D2+{val:.5g}')
+        dmm.write('C')
+        input('--------- wait for "CAL FINISHED", enter when done')
+        cal.disable()
     return
 
 
