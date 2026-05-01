@@ -6,7 +6,7 @@
 
 # **** usage:
 # - copy/edit .conf file for connection settings and cal resistor values
-# - copy/customize cal_dummy.py as required for calibrator used
+# - copy/customize cal_mfc.py as required for calibrator used
 
 # **** code structure
 # - main() near the end initializes stuff
@@ -21,7 +21,7 @@ import datetime as dt
 import logging
 import sys
 from time import sleep
-from calsource_dummy import *
+from cal_mfc import *
 from hp3478_common import *
 from magiconfig import magiconfig
 
@@ -170,10 +170,10 @@ def main():
     steps = calsteps
     if args.step in range(2, len(calsteps)+1):
         steps = [calsteps[args.step]]
-        print(f'Running only step {steps}')
+        print(f'Running only step {args.step}')
 
     for s in steps:
-        s(dmm, calsource, limits_1y, point)
+        s(dmm, calsource, point)
 
     logf.info(f'\n*********** DONE *********')
     return

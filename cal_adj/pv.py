@@ -6,7 +6,7 @@
 
 # **** usage:
 # - copy/edit .conf file for connection settings and cal resistor values
-# - copy/customize cal_dummy.py as required for calibrator used
+# - copy/customize cal_mfc.py as required for calibrator used
 
 # **** code structure
 # - main() near the end initializes stuff
@@ -21,7 +21,7 @@ import datetime as dt
 import logging
 import sys
 from time import sleep
-from calsource_dummy import *
+from cal_mfc import *
 from hp3478_common import *
 from magiconfig import magiconfig
 
