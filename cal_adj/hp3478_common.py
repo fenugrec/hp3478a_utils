@@ -6,7 +6,49 @@
 # - eventually could wrap around pyvisa resource to better handle logging some/all commands passthru
 
 import logging
+from math import ceil, log10
 from statistics import median, stdev
+
+# thin wrapper, could be even thinner
+class dmm_3478():
+    def __init__(self, pyvisa_res):
+        self.dmm = pyvisa_res
+        return
+#write command or stuff
+    def write(self, s):
+        self.dmm.write(s)
+        return
+#get single reading
+    def get_rdg(self):
+        return self.dmm.read_ascii_values()[0]
+    def config_basic(self):
+        self.dmm.write('N5T1Z1')    #5digit, trig int., autozero
+        return
+    def range_dcv(self, expect):
+        exp = ceil(log10(expect / 3))   # so 0.03 gives -2, 30M gives 7
+        exp = min(max(exp, -2), 2)
+        self.dmm.write(f'F1R{exp}')
+        return
+    def range_acv(self, expect):
+        exp = ceil(log10(expect / 3))
+        exp = min(max(exp, -1), 2)
+        self.dmm.write(f'F2R{exp}')
+        return
+    def range_r4(self, expect):
+        exp = ceil(log10(expect / 3))
+        exp = min(max(exp, 1), 7)
+        self.dmm.write(f'F4R{exp}')
+        return
+    def range_dci(self, expect):
+        exp = ceil(log10(expect / 3))
+        exp = min(max(exp, -1), 0)
+        self.dmm.write(f'F5R{exp}')
+        return
+    def range_aci(self, expect):
+        exp = ceil(log10(expect / 3))
+        exp = min(max(exp, -1), 0)
+        self.dmm.write(f'F6R{exp}')
+        return
 
 ## dummy pyvisa resources for offline debugging
 class pyvisa_dummy():
