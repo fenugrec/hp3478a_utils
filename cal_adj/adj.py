@@ -17,6 +17,7 @@
 # - check errors
 # - check cal switch status
 # - find a way to poll cal progress ? nothing obvious in 'binary status' bytes
+# - R actual values in .conf
 
 import pyvisa
 import argparse
@@ -48,6 +49,46 @@ def print_result(range, tgt, rdg, delta, tol):
         result = 'OK'
     logprint(f'{range:8g}\t{tgt:10.7g}\t{rdg:10.7g}\t'
         + f'{delta:10.7g} ({delta_ppm:.4g} ppm)\t{tol:10.7g}\t{result}')
+
+rvalues_real = [
+    {0: 0.0000020},
+    {1: 0.9997092},
+    {1.9: 1.8996760},
+    {10: 10.001010},
+    {19: 18.998463},
+    {100: 99.99357},
+    {190: 189.99445},
+    {1e3: 0.9999300e3},
+    {1.9e3: 1.8998757e3},
+    {10e3: 9.999638e3},
+    {19e3: 18.999572e3},
+    {100e3: 99.99350e3},
+    {190e3: 190.00899e3},
+    {1e6: 0.9999007e6},
+    {1.9e6: 1.9000154e6},
+    {10e6: 9.998262e6},
+    {19e6: 19.000306e6},
+    ]
+# ugh, normalized to match 3478 display, cant have exp notation
+rvalues = {
+        0: 0.0000020,
+        1: 0.9997092,
+        1.9: 1.8996760,
+        10: 10.001010,
+        19: 18.998463,
+        100: 99.99357,
+        190: 189.99445,
+        1e3: 0.9999300,
+        1.9e3: 1.8998757,
+        10e3: 9.999638,
+        19e3: 18.999572,
+        100e3: 99.99350,
+        190e3: 190.00899,
+        1e6: 0.9999007,
+        1.9e6: 1.9000154,
+        10e6: 9.998262,
+        19e6: 19.000306,
+    }
 
 ######## cal points
 
@@ -182,17 +223,17 @@ def adj_r(dmm, cal, point=None):
     print('******** wiring for 4-wire sense')
     cal.disable()
     input("-------- press Enter when ready ---------")
-    cal.set_r(0)
     dmm.config_basic()
-    dmm.range_r4(30)
     points = calpoints.r
     if point in range(0, len(points)):
         points = [points[point]]
     for ap in points:
         r = ap.range
         val = ap.val
+        val_actual = rvalues[int(val)]
         logf.info(f'adjusting range {r} with nominal {val}')
         dmm.range_r4(r)
+        cal.set_r4(0)
         cal.enable()
         input('--------- optional: apply short, enter when done')
         sleep(cfg.pv.step_dwell)
@@ -202,10 +243,9 @@ def adj_r(dmm, cal, point=None):
             stb=dmm.read_stb()
             if stb & 1: break
             sleep(0.8)
-        cal.set_r(val)
+        cal.set_r4(val)
         sleep(cfg.pv.step_dwell)
-        # assume calibrator is applying exact value
-        dmm.write(f'D2+{val:.5g}')
+        dmm.write(f'D2+{val_actual:.5f}')
         dmm.write('C')
         for a in range(0,10):
             stb=dmm.read_stb()
