@@ -119,25 +119,38 @@ def adj_dci(dmm, cal, point=None):
     sleep(cfg.pv.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
-    input("-------- wait for something, press enter")
+    print("---wait for cal finished")
+    for a in range(0,10):
+        stb=dmm.read_stb()
+        if stb & 1: break
+        sleep(0.8)
     dmm.range_dci(3)
     sleep(cfg.pv.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
-    input("-------- wait for 0 on 3A, then connect dut to cal, press enter")
+    for a in range(0,10):
+        stb=dmm.read_stb()
+        if stb & 1: break
+        sleep(0.8)
     dmm.range_dci(0.3)
     cal.set_dci(0.1)
     cal.enable()
     sleep(cfg.pv.step_dwell)
     dmm.write('D2+0.100000')
     dmm.write('C')
-    input("-------- wait for 100m, press enter")
+    for a in range(0,10):
+        stb=dmm.read_stb()
+        if stb & 1: break
+        sleep(0.8)
     dmm.range_dci(3)
     cal.set_dci(1)
     sleep(cfg.pv.step_dwell)
     dmm.write('D2+1.00000')
     dmm.write('C')
-    input("-------- wait for 1A, press enter")
+    for a in range(0,10):
+        stb=dmm.read_stb()
+        if stb & 1: break
+        sleep(0.8)
     cal.disable()
     return
 
@@ -153,7 +166,10 @@ def adj_acv(dmm, cal, point=None):
     sleep(cfg.pv.step_dwell)
     dmm.write('D2+3.0000')
     dmm.write('C')
-    input("-------- wait for something, press enter")
+    for a in range(0,10):
+        stb=dmm.read_stb()
+        if stb & 1: break
+        sleep(0.8)
     cal.disable()
     return
 
@@ -182,13 +198,19 @@ def adj_r(dmm, cal, point=None):
         sleep(cfg.pv.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
-        input('--------- observe "CALIBRATING", enter when done')
+        for a in range(0,10):
+            stb=dmm.read_stb()
+            if stb & 1: break
+            sleep(0.8)
         cal.set_r(val)
         sleep(cfg.pv.step_dwell)
         # assume calibrator is applying exact value
         dmm.write(f'D2+{val:.5g}')
         dmm.write('C')
-        input('--------- wait for "CAL FINISHED", enter when done')
+        for a in range(0,10):
+            stb=dmm.read_stb()
+            if stb & 1: break
+            sleep(0.8)
         cal.disable()
     return
 

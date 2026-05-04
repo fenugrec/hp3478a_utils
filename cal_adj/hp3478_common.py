@@ -20,6 +20,9 @@ class dmm_3478():
         self.logf.debug(f'dut: write "{s}"')
         self.dmm.write(s)
         return
+#read status byte
+    def read_stb(self):
+        return self.dmm.read_stb()
 #get single reading
     def get_rdg(self):
         rdg=self.dmm.read_ascii_values()[0]
