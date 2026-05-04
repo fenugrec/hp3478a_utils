@@ -10,7 +10,7 @@
 
 # **** code structure
 # - main() near the end initializes stuff
-# - general config is held in external pv.conf to ideally avoid having to edit this script at all
+# - general config is held in external adj.conf to ideally avoid having to edit this script at all
 
 # TODO :
 # - read f/r switch
@@ -137,13 +137,13 @@ def adj_dcv(dmm, cal, point=None):
         dmm.range_dcv(r)
         cal.set_dcv(0)
         cal.enable()
-        input('--------- optional: apply short, enter when done')
-        sleep(cfg.pv.step_dwell)
+#        input('--------- optional: apply short, enter when done')
+        sleep(cfg.adj.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
         input('--------- observe "CALIBRATING", enter when done')
         cal.set_dcv(r)
-        sleep(cfg.pv.step_dwell)
+        sleep(cfg.adj.step_dwell)
         # assume calibrator is applying exact value
         dmm.write(f'D2+{r:.5g}')
         dmm.write('C')
@@ -157,7 +157,7 @@ def adj_dci(dmm, cal, point=None):
     input("-------- disconnect dmm, press Enter ")
     dmm.config_basic()
     dmm.range_dci(0.3)
-    sleep(cfg.pv.step_dwell)
+    sleep(cfg.adj.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
     print("---wait for cal finished")
@@ -166,7 +166,7 @@ def adj_dci(dmm, cal, point=None):
         if stb & 1: break
         sleep(0.8)
     dmm.range_dci(3)
-    sleep(cfg.pv.step_dwell)
+    sleep(cfg.adj.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
     for a in range(0,10):
@@ -176,7 +176,7 @@ def adj_dci(dmm, cal, point=None):
     dmm.range_dci(0.3)
     cal.set_dci(0.1)
     cal.enable()
-    sleep(cfg.pv.step_dwell)
+    sleep(cfg.adj.step_dwell)
     dmm.write('D2+0.100000')
     dmm.write('C')
     for a in range(0,10):
@@ -185,7 +185,7 @@ def adj_dci(dmm, cal, point=None):
         sleep(0.8)
     dmm.range_dci(3)
     cal.set_dci(1)
-    sleep(cfg.pv.step_dwell)
+    sleep(180)
     dmm.write('D2+1.00000')
     dmm.write('C')
     for a in range(0,10):
@@ -204,7 +204,7 @@ def adj_acv(dmm, cal, point=None):
     dmm.range_acv(3)
     cal.set_acv(3, 1e3)
     cal.enable()
-    sleep(cfg.pv.step_dwell)
+    sleep(cfg.adj.step_dwell)
     dmm.write('D2+3.0000')
     dmm.write('C')
     for a in range(0,10):
@@ -236,7 +236,7 @@ def adj_r(dmm, cal, point=None):
         cal.set_r4(0)
         cal.enable()
         input('--------- optional: apply short, enter when done')
-        sleep(cfg.pv.step_dwell)
+        sleep(cfg.adj.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
         for a in range(0,10):
@@ -244,7 +244,7 @@ def adj_r(dmm, cal, point=None):
             if stb & 1: break
             sleep(0.8)
         cal.set_r4(val)
-        sleep(cfg.pv.step_dwell)
+        sleep(cfg.adj.step_dwell)
         dmm.write(f'D2+{val_actual:.5f}')
         dmm.write('C')
         for a in range(0,10):
