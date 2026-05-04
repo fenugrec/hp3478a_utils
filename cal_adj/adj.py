@@ -135,7 +135,8 @@ def adj_dcv(dmm, cal, point=None):
         r = ap.range
         logf.info(f'adjusting range {r}')
         dmm.range_dcv(r)
-        cal.set_dcv(0)
+#        cal.set_dcv(0)
+        cal.set_r(0)
         cal.enable()
 #        input('--------- optional: apply short, enter when done')
         sleep(cfg.adj.step_dwell)
@@ -143,9 +144,13 @@ def adj_dcv(dmm, cal, point=None):
         dmm.write('C')
         input('--------- observe "CALIBRATING", enter when done')
         cal.set_dcv(r)
+        cal.enable()
         sleep(cfg.adj.step_dwell)
         # assume calibrator is applying exact value
-        dmm.write(f'D2+{r:.5g}')
+        # tweak for mV ranges!
+        if r < 1:
+            r = r * 1000
+        dmm.write(f'D2+{r:.5f}')
         dmm.write('C')
         input('--------- wait for "CAL FINISHED", enter when done')
         cal.disable()
@@ -176,8 +181,8 @@ def adj_dci(dmm, cal, point=None):
     dmm.range_dci(0.3)
     cal.set_dci(0.1)
     cal.enable()
-    sleep(cfg.adj.step_dwell)
-    dmm.write('D2+0.100000')
+    sleep(30)
+    dmm.write('D2+100.000')
     dmm.write('C')
     for a in range(0,10):
         stb=dmm.read_stb()
@@ -192,6 +197,7 @@ def adj_dci(dmm, cal, point=None):
         stb=dmm.read_stb()
         if stb & 1: break
         sleep(0.8)
+    cal.set_dci(0)
     cal.disable()
     return
 
@@ -205,12 +211,13 @@ def adj_acv(dmm, cal, point=None):
     cal.set_acv(3, 1e3)
     cal.enable()
     sleep(cfg.adj.step_dwell)
-    dmm.write('D2+3.0000')
+    dmm.write('D2+3.00000')
     dmm.write('C')
     for a in range(0,10):
         stb=dmm.read_stb()
         if stb & 1: break
         sleep(0.8)
+    cal.set_dcv(0)
     cal.disable()
     return
 
