@@ -16,24 +16,33 @@ class cal_mfc():
         self.dmm.write(s)
         return
     def enable(self):
-        self.write('OPER')
+        # higher voltage ranges need 2x OPER to confirm; just always send 2
+        self.write('OPER;*CLS;OPER')
         return
     def disable(self):
         self.write('STBY')
         return
     def set_dcv(self, x):
+        self.write(f'EXTSENSE OFF')
         self.write(f'OUT {x} V')
         return
     def set_dci(self, x):
+        self.write(f'EXTSENSE OFF')
         self.write(f'OUT {x} A')
         return
     def set_acv(self, x, freq):
+        self.write(f'EXTSENSE OFF')
         self.write(f'OUT {x} V, {freq} Hz')
         return
     def set_aci(self, x, freq):
+        self.write(f'EXTSENSE OFF')
         self.write(f'OUT {x} A, {freq} Hz')
         return
-    def set_r(self):
+    def set_r(self, x):
+        self.write(f'EXTSENSE OFF')
+        self.write(f'OUT {x} OHM')
+    def set_r4(self, x):
+        self.write(f'EXTSENSE ON')
         self.write(f'OUT {x} OHM')
         return
 
