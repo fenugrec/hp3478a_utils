@@ -25,9 +25,12 @@ from cal_mfc import *
 from hp3478_common import *
 from magiconfig import magiconfig
 
+def logprint(*args, **kwargs):
+    logf.info(*args, **kwargs)
+
 #func to format each measurement result
 def print_result_header():
-    print(f'\n{'range':10}\t{'target':10}\t{'reading':10}\t{'delta':20}\t{'tol':10}\t{'pass':10}')
+    logprint(f'\n{'range':10}\t{'target':10}\t{'reading':10}\t{'delta':20}\t{'tol':10}\t{'pass':10}')
 
 def print_result(range, tgt, rdg, delta, tol):
     if tgt:
@@ -39,7 +42,7 @@ def print_result(range, tgt, rdg, delta, tol):
         result = '* FAIL *'
     else:
         result = 'OK'
-    print(f'{range:8g}\t{tgt:10.7g}\t{rdg:10.7g}\t'
+    logprint(f'{range:8g}\t{tgt:10.7g}\t{rdg:10.7g}\t'
         + f'{delta:10.7g} ({delta_ppm:.4g} ppm)\t{tol:10.7g}\t{result}')
 
 ######## verification points
@@ -135,11 +138,10 @@ class limits_1y():
             ]
 
 def step2(dmm, cal, limits, point=None):
-    print('\n******** STEP 2 DCV ********')
-    print('******** CAUTION up to 300V on terminals ! ********')
-    print('******** wiring for 4-wire sense : DUT_L => CAL_FL, CAL_SL')
+    logprint('\n******** STEP 2 DCV ********')
+    logprint('******** CAUTION up to 300V on terminals ! ********')
+    logprint('*** wiring: 2-wire, DUT to CALSRC')
     input("-------- press Enter when ready ---------")
-    logf.debug('\n STEP 2')
     cal.disable()
     cal.set_dcv(0)
     print_result_header()
@@ -180,7 +182,7 @@ def main():
 
     point = args.point
     if (point and not args.step):
-        print('cannot specify single point without step !')
+        logprint('cannot specify single point without step !')
         exit()
 
     ## setup logging, test/debug options
@@ -211,12 +213,12 @@ def main():
     logf.info(f'Using following parameters for PV:')
     cfg.print_configtree(logf)
 
-    print('\n******** STEP 1 (prep)')
+    logprint('\n******** STEP 1 (prep)')
 
     steps = calsteps
     if args.step in range(2, len(calsteps)+1):
         steps = [calsteps[args.step]]
-        print(f'Running only step {args.step}')
+        logprint(f'Running only step {args.step}')
 
     for s in steps:
         s(dmm, calsource, limits_1y, point)
