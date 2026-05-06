@@ -16,7 +16,7 @@
 # - read f/r switch
 # - check errors
 # - check cal switch status
-# - R actual values in .conf
+# - truncate strings to correct width when sending 'real value' to 3478
 
 import pyvisa
 import argparse
@@ -49,33 +49,13 @@ def print_result(range, tgt, rdg, delta, tol):
     logprint(f'{range:8g}\t{tgt:10.7g}\t{rdg:10.7g}\t'
         + f'{delta:10.7g} ({delta_ppm:.4g} ppm)\t{tol:10.7g}\t{result}')
 
-# actual values applied by calibrator / standard
-rvalues_real = {
-        0: 0.0000020,
-        1: 0.9997092,
-        1.9: 1.8996760,
-        10: 10.001010,
-        19: 18.998463,
-        100: 99.99357,
-        190: 189.99445,
-        1e3: 0.9999300e3,
-        1.9e3: 1.8998757e3,
-        10e3: 9.999638e3,
-        19e3: 18.999572e3,
-        100e3: 99.99350e3,
-        190e3: 190.00899e3,
-        1e6: 0.9999007e6,
-        1.9e6: 1.9000154e6,
-        10e6: 9.998262e6,
-        19e6: 19.000306e6,
-        }
 # ugh, normalize resistance values to match 3478 display, cant have exp notation
 # e.g. 999.97k on range 3e6 should be '0.99997'
 def normalize_rval(range, rval):
     while range > 1e3:
         rval /= 1e3
         range /= 1e3
-    print(f'new rval {rval}')
+    return rval
 
 ######## cal points
 
@@ -208,8 +188,9 @@ def adj_r(dmm, cal, point=None):
     for ap in points:
         r = ap.range
         val = ap.val
-        val_actual = normalize_rval(r, rvalues_real[val])
-        logf.info(f'adjusting range {r} with nominal {val}')
+        val_real = cfg.calsource.rvalues[val]
+        val_normal = normalize_rval(r, val_real)
+        logf.info(f'adjusting range {r} with nominal {val}, actual {val_real}')
         dmm.range_r4(r)
         cal.set_r4(0)
         cal.enable()
@@ -220,7 +201,7 @@ def adj_r(dmm, cal, point=None):
         dmm.wait_stb(10)
         cal.set_r4(val)
         sleep(cfg.adj.step_dwell)
-        dmm.write(f'D2+{val_actual:.5f}')
+        dmm.write(f'D2+{val_normal:.5f}')
         dmm.write('C')
         dmm.wait_stb(10)
         cal.disable()
