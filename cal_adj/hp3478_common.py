@@ -15,6 +15,13 @@ class dmm_3478():
         self.logf = logging.getLogger()
         self.dmm = pyvisa_res
         return
+#poll STB bit 0 for up to 't' seconds
+    def wait_stb(self, t):
+        for a in range(0,t)
+            stb=self.dmm.read_stb()
+            if stb & 1: break
+            sleep(0.9)
+
 #write command or stuff
     def write(self, s):
         self.logf.debug(f'dut: write "{s}"')

@@ -166,37 +166,25 @@ def adj_dci(dmm, cal, point=None):
     dmm.write('D2+000000')
     dmm.write('C')
     print("---wait for cal finished")
-    for a in range(0,10):
-        stb=dmm.read_stb()
-        if stb & 1: break
-        sleep(0.8)
+    wait_stb(10)
     dmm.range_dci(3)
     sleep(cfg.adj.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
-    for a in range(0,10):
-        stb=dmm.read_stb()
-        if stb & 1: break
-        sleep(0.8)
+    wait_stb(10)
     dmm.range_dci(0.3)
     cal.set_dci(0.1)
     cal.enable()
     sleep(30)
     dmm.write('D2+100.000')
     dmm.write('C')
-    for a in range(0,10):
-        stb=dmm.read_stb()
-        if stb & 1: break
-        sleep(0.8)
+    wait_stb(10)
     dmm.range_dci(3)
     cal.set_dci(1)
     sleep(180)
     dmm.write('D2+1.00000')
     dmm.write('C')
-    for a in range(0,10):
-        stb=dmm.read_stb()
-        if stb & 1: break
-        sleep(0.8)
+    wait_stb(10)
     cal.set_dci(0)
     cal.disable()
     return
@@ -213,10 +201,7 @@ def adj_acv(dmm, cal, point=None):
     sleep(cfg.adj.step_dwell)
     dmm.write('D2+3.00000')
     dmm.write('C')
-    for a in range(0,10):
-        stb=dmm.read_stb()
-        if stb & 1: break
-        sleep(0.8)
+    wait_stb(10)
     cal.set_dcv(0)
     cal.disable()
     return
@@ -246,18 +231,12 @@ def adj_r(dmm, cal, point=None):
         sleep(cfg.adj.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
-        for a in range(0,10):
-            stb=dmm.read_stb()
-            if stb & 1: break
-            sleep(0.8)
+        wait_stb(10)
         cal.set_r4(val)
         sleep(cfg.adj.step_dwell)
         dmm.write(f'D2+{val_actual:.5f}')
         dmm.write('C')
-        for a in range(0,10):
-            stb=dmm.read_stb()
-            if stb & 1: break
-            sleep(0.8)
+        wait_stb(10)
         cal.disable()
     return
 
