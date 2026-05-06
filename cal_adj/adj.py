@@ -228,7 +228,7 @@ def adj_r(dmm, cal, point=None):
 
 
 # gather calsteps together
-calsteps = [None, None, adj_dcv, adj_dci, adj_acv, adj_aci, adj_r]
+calsteps = [adj_dcv, adj_dci, adj_acv, adj_aci, adj_r]
 
 def main():
     parser = argparse.ArgumentParser(description="hp 3478a calibration (adjustment)")
@@ -280,7 +280,7 @@ def main():
     logf.info(f'original cal data:\n{caldata}')
 
     steps = calsteps
-    if args.step in range(2, len(calsteps)+1):
+    if args.step in range(0, len(calsteps)+1):
         steps = [calsteps[args.step]]
         logprint(f'Running only step {args.step}')
 
