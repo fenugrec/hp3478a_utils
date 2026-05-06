@@ -16,7 +16,6 @@
 # - read f/r switch
 # - check errors
 # - check cal switch status
-# - find a way to poll cal progress ? nothing obvious in 'binary status' bytes
 # - R actual values in .conf
 
 import pyvisa
@@ -142,17 +141,17 @@ def adj_dcv(dmm, cal, point=None):
         sleep(cfg.adj.step_dwell)
         dmm.write('D2+000000')
         dmm.write('C')
-        input('--------- observe "CALIBRATING", enter when done')
+        wait_stb(10)
         cal.set_dcv(r)
         cal.enable()
         sleep(cfg.adj.step_dwell)
         # assume calibrator is applying exact value
-        # tweak for mV ranges!
+        # tweak entered value for mV ranges!
         if r < 1:
             r = r * 1000
         dmm.write(f'D2+{r:.5f}')
         dmm.write('C')
-        input('--------- wait for "CAL FINISHED", enter when done')
+        wait_stb(10)
         cal.disable()
     return
 
@@ -165,7 +164,6 @@ def adj_dci(dmm, cal, point=None):
     sleep(cfg.adj.step_dwell)
     dmm.write('D2+000000')
     dmm.write('C')
-    print("---wait for cal finished")
     wait_stb(10)
     dmm.range_dci(3)
     sleep(cfg.adj.step_dwell)
