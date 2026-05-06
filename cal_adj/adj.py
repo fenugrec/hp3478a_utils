@@ -49,27 +49,8 @@ def print_result(range, tgt, rdg, delta, tol):
     logprint(f'{range:8g}\t{tgt:10.7g}\t{rdg:10.7g}\t'
         + f'{delta:10.7g} ({delta_ppm:.4g} ppm)\t{tol:10.7g}\t{result}')
 
-rvalues_real = [
-    {0: 0.0000020},
-    {1: 0.9997092},
-    {1.9: 1.8996760},
-    {10: 10.001010},
-    {19: 18.998463},
-    {100: 99.99357},
-    {190: 189.99445},
-    {1e3: 0.9999300e3},
-    {1.9e3: 1.8998757e3},
-    {10e3: 9.999638e3},
-    {19e3: 18.999572e3},
-    {100e3: 99.99350e3},
-    {190e3: 190.00899e3},
-    {1e6: 0.9999007e6},
-    {1.9e6: 1.9000154e6},
-    {10e6: 9.998262e6},
-    {19e6: 19.000306e6},
-    ]
-# ugh, normalized to match 3478 display, cant have exp notation
-rvalues = {
+# actual values applied by calibrator / standard
+rvalues_real = {
         0: 0.0000020,
         1: 0.9997092,
         1.9: 1.8996760,
@@ -77,17 +58,24 @@ rvalues = {
         19: 18.998463,
         100: 99.99357,
         190: 189.99445,
-        1e3: 0.9999300,
-        1.9e3: 1.8998757,
-        10e3: 9.999638,
-        19e3: 18.999572,
-        100e3: 99.99350,
-        190e3: 190.00899,
-        1e6: 0.9999007,
-        1.9e6: 1.9000154,
-        10e6: 9.998262,
-        19e6: 19.000306,
-    }
+        1e3: 0.9999300e3,
+        1.9e3: 1.8998757e3,
+        10e3: 9.999638e3,
+        19e3: 18.999572e3,
+        100e3: 99.99350e3,
+        190e3: 190.00899e3,
+        1e6: 0.9999007e6,
+        1.9e6: 1.9000154e6,
+        10e6: 9.998262e6,
+        19e6: 19.000306e6,
+        }
+# ugh, normalize resistance values to match 3478 display, cant have exp notation
+# e.g. 999.97k on range 3e6 should be '0.99997'
+def normalize_rval(range, rval):
+    while range > 1e3:
+        rval /= 1e3
+        range /= 1e3
+    print(f'new rval {rval}')
 
 ######## cal points
 
@@ -220,7 +208,7 @@ def adj_r(dmm, cal, point=None):
     for ap in points:
         r = ap.range
         val = ap.val
-        val_actual = rvalues[int(val)]
+        val_actual = normalize_rval(r, rvalues_real[val])
         logf.info(f'adjusting range {r} with nominal {val}')
         dmm.range_r4(r)
         cal.set_r4(0)
