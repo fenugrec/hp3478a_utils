@@ -13,6 +13,7 @@
 # - general config is held in external pv.conf to ideally avoid having to edit this script at all
 
 # TODO :
+# - add 24h limits
 
 import pyvisa
 import argparse
@@ -44,26 +45,6 @@ def print_result(range, tgt, rdg, delta, tol):
         result = 'OK'
     logprint(f'{range:8g}\t{tgt:10.7g}\t{rdg:10.7g}\t'
         + f'{delta:10.7g} ({delta_ppm:.4g} ppm)\t{tol:10.7g}\t{result}')
-
-rvalues_real = {
-        0: 0.0000020,
-        1: 0.9997092,
-        1.9: 1.8996760,
-        10: 10.001010,
-        19: 18.998463,
-        100: 99.99357,
-        190: 189.99445,
-        1e3: 0.9999300e3,
-        1.9e3: 1.8998757e3,
-        10e3: 9.999638e3,
-        19e3: 18.999572e3,
-        100e3: 99.99350e3,
-        190e3: 190.00899e3,
-        1e6: 0.9999007e6,
-        1.9e6: 1.9000154e6,
-        10e6: 9.998262e6,
-        19e6: 19.000306e6,
-    }
 
 ######## verification points
 
@@ -319,7 +300,7 @@ def step6(dmm, cal, limits, point=None):
     for ap in points:
         r = ap.range
         val = ap.target
-        val_actual = rvalues_real[int(val)]
+        val_actual = cfg.calsource.rvalues[int(val)]
         dmm.range_r4(r)
         cal.set_r4(0)
         cal.enable()
