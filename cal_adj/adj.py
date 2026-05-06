@@ -289,7 +289,9 @@ def main():
     logf.info(f'Using following parameters:')
     cfg.print_configtree(logf)
 
-    logprint('\n******** STEP 1 (prep)')
+    logprint('\n******** STEP 1 (prep)\nbacking up CAL constants...')
+    caldata = dmm.get_caldata()
+    logf.info(f'original cal data:\n{caldata}')
 
     steps = calsteps
     if args.step in range(2, len(calsteps)+1):
@@ -299,6 +301,8 @@ def main():
     for s in steps:
         s(dmm, calsource, point)
 
+    caldata = dmm.get_caldata()
+    logf.info(f'new cal data:\n{caldata}')
     logf.info(f'\n*********** DONE *********')
     return
 

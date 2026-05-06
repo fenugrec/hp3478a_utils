@@ -17,7 +17,7 @@ class dmm_3478():
         return
 #poll STB bit 0 for up to 't' seconds
     def wait_stb(self, t):
-        for a in range(0,t)
+        for a in range(0,t):
             stb=self.dmm.read_stb()
             if stb & 1: break
             sleep(0.9)
@@ -63,6 +63,14 @@ class dmm_3478():
         exp = min(max(exp, -1), 0)
         self.dmm.write(f'F6R{exp}')
         return
+
+    def get_caldata(self):
+        caldata=[]
+        for i in range(0,256):
+            self.dmm.write(f'W{d}')
+            rb = self.dmm.read()[0]
+            caldata.append(rb)
+        return caldata
 
 ## dummy pyvisa resources for offline debugging
 class pyvisa_dummy():
