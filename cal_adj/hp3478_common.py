@@ -78,6 +78,8 @@ class pyvisa_dummy():
         self.logf = logging.getLogger()
         self.name = name
         self.val = 0    # dummy val for readings etc; increment on every query
+    def read_stb(self):
+        return 1    #always Done
     def write(self, ws):
         self.logf.debug(f"{self.name}.write('{ws}')")
     def query(self, qs):
