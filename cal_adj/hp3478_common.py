@@ -67,8 +67,8 @@ class dmm_3478():
     def get_caldata(self):
         caldata=[]
         for i in range(0,256):
-            self.dmm.write(f'W{d}')
-            rb = self.dmm.read()[0]
+            self.dmm.write(f'W{i}')
+            rb = self.dmm.read()
             caldata.append(rb)
         return caldata
 
@@ -97,6 +97,9 @@ class pyvisa_dummy():
         self.logf.debug(f"{self.name}.query_ascii_values('{qs}') => {self.val}")
         self.val = self.val + 1
         return [self.val]
+    def read(self):
+        self.val += 1
+        return self.val
 
 # given an arbitrary func that returns one val, take readings and compute stats
 class read_multi():
